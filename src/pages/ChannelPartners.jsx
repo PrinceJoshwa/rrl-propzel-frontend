@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, asArray, formatApiError } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { CONSOLE } from "@/constants/testIds";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Trash2, Phone, Mail, MapPin } from "lucide-react";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 const EMPTY = { name: "", company: "", phone: "", email: "", city: "", rera: "", commission_pct: "", active: true, notes: "" };
 
 export default function ChannelPartners() {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -38,7 +40,7 @@ export default function ChannelPartners() {
           <h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">Channel partners</h2>
           <div className="text-sm text-forest/60 mt-1">Brokers, agencies and referrers sourcing leads into Tasko.</div>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {user?.role === "admin" && <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <button data-testid={CONSOLE.cpNewBtn} className="h-9 rounded-sm bg-forest text-white text-sm px-3.5 font-medium hover:bg-forest-soft transition-colors duration-150 inline-flex items-center gap-2">
               <Plus className="h-4 w-4" /> New partner
@@ -61,7 +63,7 @@ export default function ChannelPartners() {
               <button data-testid={CONSOLE.cpSubmitBtn} onClick={submit} disabled={!form.name} className="h-9 px-4 rounded-sm bg-forest text-white text-sm font-medium hover:bg-forest-soft transition-colors duration-150 disabled:opacity-50">Create</button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -72,7 +74,7 @@ export default function ChannelPartners() {
                 <div className="font-display font-bold text-xl text-forest tracking-tight">{p.name}</div>
                 <div className="text-sm text-forest/60 mt-0.5">{p.company}</div>
               </div>
-              <button onClick={() => remove(p.id)} className="text-forest/40 hover:text-clay p-1 transition-colors duration-150"><Trash2 className="h-3.5 w-3.5" /></button>
+              {user?.role === "admin" && <button onClick={() => remove(p.id)} className="text-forest/40 hover:text-clay p-1 transition-colors duration-150"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
             <div className="mt-3 space-y-1.5 text-xs text-forest/70">
               {p.phone && <div className="inline-flex items-center gap-1.5"><Phone className="h-3 w-3" /> {p.phone}</div>}

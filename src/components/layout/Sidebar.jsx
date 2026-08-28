@@ -32,9 +32,10 @@ const GROUPS = [
     label: "My Console",
     items: [
       { to: "/reports", label: "Reports", icon: BarChart3, testId: NAV.itemReports },
-      { to: "/data-import", label: "Data Import", icon: UploadCloud, testId: NAV.itemDataImport, role: ["admin", "manager"] },
+      { to: "/data-import", label: "Data Import", icon: UploadCloud, testId: NAV.itemDataImport, role: ["admin"] },
+      { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
       { to: "/wa-templates", label: "WhatsApp Templates", icon: MessageSquareText, testId: NAV.itemWATemplates },
-      { to: "/bulk-allocation", label: "Bulk Lead Allocation", icon: ShuffleIcon, testId: NAV.itemBulkAlloc, role: ["admin", "manager"] },
+      { to: "/bulk-allocation", label: "Bulk Lead Allocation", icon: ShuffleIcon, testId: NAV.itemBulkAlloc, role: ["admin"] },
       { to: "/partners", label: "Channel Partners", icon: Handshake, testId: NAV.itemPartners },
       { to: "/proposals", label: "Proposals", icon: FileText, testId: NAV.itemProposals },
       { to: "/team", label: "Team", icon: UserCog, testId: NAV.itemTeam, role: ["admin"] },
@@ -132,7 +133,7 @@ export default function Sidebar() {
         <DialogContent className="rounded-sm max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">My profile</DialogTitle>
-            <DialogDescription className="text-forest/60">Update your details and mobile number used for Twilio call bridging.</DialogDescription>
+            <DialogDescription className="text-forest/60">Update your details and mobile number used for call bridging.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -144,7 +145,7 @@ export default function Sidebar() {
               <div className="text-sm text-forest">{user?.email}</div>
             </div>
             <div>
-              <div className="label-caps mb-1.5">Phone (E.164 · used for Twilio call bridging)</div>
+              <div className="label-caps mb-1.5">Phone (E.164 · used for call bridging)</div>
               <input
                 data-testid="profile-phone-input"
                 value={phone}
@@ -152,7 +153,7 @@ export default function Sidebar() {
                 placeholder="+919812345678"
                 className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest"
               />
-              <div className="text-[11px] text-forest/50 mt-1">On a Twilio trial account, this number must be verified in your Twilio console for calls to connect.</div>
+              <div className="text-[11px] text-forest/50 mt-1">The configured calling provider uses this number when bridging calls.</div>
             </div>
           </div>
           <DialogFooter>

@@ -59,6 +59,7 @@ export const SOURCE_LABEL = {
   commonfloor: "CommonFloor",
   housing: "Housing.com",
   website: "Website",
+  jagathi_website: "Jagathi Website",
   google_ads: "Google Ads",
   facebook: "Facebook",
   instagram: "Instagram",

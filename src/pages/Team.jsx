@@ -13,6 +13,7 @@ const ROLE_TONE = {
   admin: "bg-forest text-white",
   manager: "bg-clay/10 text-clay border border-clay/30",
   executive: "bg-[#2D6A4F]/10 text-[#2D6A4F] border border-[#2D6A4F]/30",
+  sales: "bg-[#457B9D]/10 text-[#457B9D] border border-[#457B9D]/30",
 };
 
 function PhoneCell({ member, canEdit, onSaved }) {
@@ -96,7 +97,7 @@ export default function Team() {
           <h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">
             {users.length} member{users.length === 1 ? "" : "s"}
           </h2>
-          <div className="text-sm text-forest/60 mt-1">Add each member's mobile in E.164 format (e.g. +919812345678) so Twilio can bridge outbound calls.</div>
+          <div className="text-sm text-forest/60 mt-1">Add each member's mobile in E.164 format (e.g. +919812345678) so the calling provider can bridge outbound calls.</div>
         </div>
         {user?.role === "admin" && (
           <Dialog open={open} onOpenChange={setOpen}>
@@ -134,6 +135,7 @@ export default function Team() {
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="executive">Executive</SelectItem>
+                      <SelectItem value="sales">Sales</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

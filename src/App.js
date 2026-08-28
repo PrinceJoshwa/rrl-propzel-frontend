@@ -19,6 +19,7 @@ import Settings from "@/pages/Settings";
 import Reports from "@/pages/Reports";
 import DataImport from "@/pages/DataImport";
 import WhatsAppTemplates from "@/pages/WhatsAppTemplates";
+import WhatsApp from "@/pages/WhatsApp";
 import BulkAllocation from "@/pages/BulkAllocation";
 import ChannelPartners from "@/pages/ChannelPartners";
 import Proposals from "@/pages/Proposals";
@@ -60,6 +61,9 @@ function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="data-import" element={<DataImport />} />
         <Route path="wa-templates" element={<WhatsAppTemplates />} />
+        <Route path="whatsapp" element={<WhatsApp />} />
+        <Route path="whatsapp/templates" element={<WhatsAppTemplates />} />
+        <Route path="whatsapp/:feature" element={<WhatsApp />} />
         <Route path="bulk-allocation" element={<BulkAllocation />} />
         <Route path="partners" element={<ChannelPartners />} />
         <Route path="proposals" element={<Proposals />} />

@@ -177,6 +177,9 @@ function EditLeadDialog({ lead, projects, onSaved }) {
   useEffect(() => {
     if (open) setForm({
       name: lead.name || "", phone: lead.phone || "", email: lead.email || "",
+      secondary_contact_name: lead.secondary_contact_name || "",
+      secondary_contact_email: lead.secondary_contact_email || "",
+      secondary_contact_phone: lead.secondary_contact_phone || "",
       configuration: lead.configuration || "", budget_min: lead.budget_min ?? "",
       budget_max: lead.budget_max ?? "", location_pref: lead.location_pref || "",
       project_id: lead.project_id || "", priority: lead.priority || "warm",
@@ -186,7 +189,7 @@ function EditLeadDialog({ lead, projects, onSaved }) {
   const submit = async () => {
     try {
       const body = { ...form };
-      ["email", "phone", "configuration", "location_pref", "notes"].forEach((k) => { if (body[k] === "") delete body[k]; });
+      ["email", "phone", "secondary_contact_name", "secondary_contact_email", "secondary_contact_phone", "configuration", "location_pref", "notes"].forEach((k) => { if (body[k] === "") delete body[k]; });
       if (body.budget_min === "" || body.budget_min == null) delete body.budget_min; else body.budget_min = Number(body.budget_min);
       if (body.budget_max === "" || body.budget_max == null) delete body.budget_max; else body.budget_max = Number(body.budget_max);
       if (!body.project_id) delete body.project_id;
@@ -211,6 +214,11 @@ function EditLeadDialog({ lead, projects, onSaved }) {
             <F label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} testId="lead-edit-phone" />
           </div>
           <F label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} testId="lead-edit-email" />
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Secondary name" value={form.secondary_contact_name} onChange={(v) => setForm({ ...form, secondary_contact_name: v })} />
+            <F label="Secondary phone" value={form.secondary_contact_phone} onChange={(v) => setForm({ ...form, secondary_contact_phone: v })} />
+          </div>
+          <F label="Secondary email" value={form.secondary_contact_email} onChange={(v) => setForm({ ...form, secondary_contact_email: v })} />
           <div className="grid grid-cols-2 gap-3">
             <F label="Configuration" value={form.configuration} onChange={(v) => setForm({ ...form, configuration: v })} />
             <F label="Location" value={form.location_pref} onChange={(v) => setForm({ ...form, location_pref: v })} />
@@ -258,6 +266,76 @@ function F({ label, value, onChange, type = "text", testId }) {
   );
 }
 
+function WhatsAppPanel({ leadId }) {
+  const [data, setData] = useState(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    try {
+      const r = await api.get(`/leads/${leadId}/whatsapp`);
+      setData(r.data);
+    } catch (e) {
+      setData({ error: formatApiError(e.response?.data?.detail), messages: [] });
+    }
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [leadId]);
+
+  const send = async () => {
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      const r = await api.post(`/leads/${leadId}/whatsapp/messages`, { text: text.trim() });
+      const status = r.data?.provider?.status;
+      toast.success(status === "pending_provider" ? "WhatsApp message saved; provider pending" : "WhatsApp message sent");
+      setText("");
+      load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const messages = data?.messages || [];
+  return (
+    <div className="border border-[#E6E4DD] bg-white rounded-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="label-caps">WhatsApp</div>
+          <h3 className="font-display font-bold text-xl text-forest tracking-tight mt-1">Conversation</h3>
+        </div>
+        {data?.conversation?.contact_phone && <div className="text-xs text-forest/50 tabular-nums">{data.conversation.contact_phone}</div>}
+      </div>
+      {data?.error ? (
+        <div className="text-sm text-clay">{data.error}</div>
+      ) : (
+        <>
+          <div className="min-h-[160px] max-h-[280px] overflow-y-auto border border-[#E6E4DD] rounded-sm p-3 bg-bone-alt/40 space-y-2">
+            {messages.length === 0 && <div className="text-sm text-forest/50 text-center py-12">No WhatsApp messages yet.</div>}
+            {messages.map((m) => (
+              <div key={m.id} className={`flex ${m.direction === "outgoing" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-sm px-3 py-2 text-sm ${m.direction === "outgoing" ? "bg-forest text-white" : "bg-white border border-[#E6E4DD] text-forest"}`}>
+                  <div>{m.text}</div>
+                  <div className={`text-[10px] mt-1 ${m.direction === "outgoing" ? "text-white/60" : "text-forest/40"}`}>{relTime(m.created_at)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="Type a WhatsApp message..." className="flex-1 h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            <button onClick={send} disabled={busy || !text.trim()} className="h-10 px-4 rounded-sm bg-forest text-white text-sm font-medium hover:bg-forest-soft transition-colors duration-150 disabled:opacity-50">
+              Send
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function LeadDetail() {
   const { leadId } = useParams();
   const nav = useNavigate();
@@ -271,6 +349,8 @@ export default function LeadDetail() {
   const [noteKind, setNoteKind] = useState("note");
   const [visitAt, setVisitAt] = useState("");
   const [visitProjectId, setVisitProjectId] = useState("");
+  const [visitPresalesOwnerId, setVisitPresalesOwnerId] = useState("");
+  const [visitSalesOwnerId, setVisitSalesOwnerId] = useState("");
   const [fuAt, setFuAt] = useState("");
   const [fuKind, setFuKind] = useState("call");
   const [fuOpen, setFuOpen] = useState(false);
@@ -298,7 +378,7 @@ export default function LeadDetail() {
 
   const owner = users.find((u) => u.id === lead.assigned_to);
   const project = projects.find((p) => p.id === lead.project_id);
-  const canReassign = user?.role === "admin" || user?.role === "manager";
+  const canModifyLead = user?.role === "admin";
 
   const changeStage = async (newStage) => {
     await api.post(`/leads/${leadId}/stage`, { stage: newStage });
@@ -321,7 +401,14 @@ export default function LeadDetail() {
   const scheduleVisit = async () => {
     if (!visitAt || !visitProjectId) { toast.error("Pick date & project"); return; }
     try {
-      await api.post("/site-visits", { lead_id: leadId, project_id: visitProjectId, scheduled_at: new Date(visitAt).toISOString() });
+      const payload = {
+        lead_id: leadId,
+        project_id: visitProjectId,
+        scheduled_at: new Date(visitAt).toISOString(),
+        presales_owner_id: visitPresalesOwnerId || lead.assigned_to || undefined,
+        sales_owner_id: visitSalesOwnerId || undefined,
+      };
+      await api.post("/site-visits", payload);
       toast.success("Site visit scheduled"); setVisitOpen(false); setVisitAt(""); load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
@@ -351,7 +438,7 @@ export default function LeadDetail() {
           <ArrowLeft className="h-3.5 w-3.5" /> Back to leads
         </button>
         <div className="flex items-center gap-4">
-          <EditLeadDialog lead={lead} projects={projects} onSaved={load} />
+          {canModifyLead && <EditLeadDialog lead={lead} projects={projects} onSaved={load} />}
           {user?.role === "admin" && (
             <button data-testid="lead-delete-btn" onClick={deleteLead} className="text-clay/80 hover:text-clay inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.15em] font-bold transition-colors duration-150">
               <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -368,12 +455,22 @@ export default function LeadDetail() {
                 <div className="label-caps">Lead profile</div>
                 <div className="flex items-center gap-4 mt-1">
                   <h1 className="font-display font-black text-4xl text-forest tracking-tight">{lead.name}</h1>
-                  <StarRating value={lead.stars || 0} onChange={setStars} size={20} testIdBase="lead-star" />
+                  <StarRating value={lead.stars || 0} onChange={canModifyLead ? setStars : undefined} size={20} testIdBase="lead-star" />
                 </div>
                 <div className="flex items-center gap-4 mt-3 text-sm text-forest/70">
                   {lead.phone && <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {lead.phone}</span>}
                   {lead.email && <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> {lead.email}</span>}
                 </div>
+                {(lead.secondary_contact_name || lead.secondary_contact_phone || lead.secondary_contact_email) && (
+                  <div className="mt-4 pt-4 border-t border-[#E6E4DD]">
+                    <div className="label-caps mb-2">Secondary contact</div>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-forest/70">
+                      {lead.secondary_contact_name && <span>{lead.secondary_contact_name}</span>}
+                      {lead.secondary_contact_phone && <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {lead.secondary_contact_phone}</span>}
+                      {lead.secondary_contact_email && <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> {lead.secondary_contact_email}</span>}
+                    </div>
+                  </div>
+                )}
               </div>
               <span
                 className="text-[10px] uppercase tracking-[0.18em] font-bold rounded-sm px-2.5 py-1"
@@ -394,6 +491,8 @@ export default function LeadDetail() {
               <Field label="Updated" value={relTime(lead.updated_at || lead.created_at)} />
             </div>
           </div>
+
+          <WhatsAppPanel leadId={leadId} />
 
           {/* Twilio Call button (live) + manual log actions */}
           <div className="grid grid-cols-4 gap-3">
@@ -486,8 +585,9 @@ export default function LeadDetail() {
                   key={s.key}
                   data-testid={LEADS.stageBtn}
                   data-stage={s.key}
-                  onClick={() => changeStage(s.key)}
-                  className={`text-xs font-medium h-9 rounded-sm border transition-colors duration-150 ${s.key === lead.stage ? "border-forest bg-forest text-white" : "border-[#E6E4DD] text-forest hover:border-forest"}`}
+                  onClick={() => canModifyLead && changeStage(s.key)}
+                  disabled={!canModifyLead}
+                  className={`text-xs font-medium h-9 rounded-sm border transition-colors duration-150 disabled:opacity-50 ${s.key === lead.stage ? "border-forest bg-forest text-white" : "border-[#E6E4DD] text-forest hover:border-forest"}`}
                 >
                   {s.label}
                 </button>
@@ -504,11 +604,11 @@ export default function LeadDetail() {
                 <div className="text-[10px] uppercase tracking-[0.18em] text-forest/50">{owner?.role || ""}</div>
               </div>
             </div>
-            {canReassign && (
+            {canModifyLead && (
               <Select value={lead.assigned_to || "__none__"} onValueChange={(v) => v !== "__none__" && reassign(v)}>
                 <SelectTrigger data-testid={LEADS.assignBtn} className="h-9 rounded-sm border-[#E6E4DD]"><SelectValue placeholder="Reassign…" /></SelectTrigger>
                 <SelectContent>
-                  {users.filter((u) => u.role === "executive").map((u) => (
+                  {users.filter((u) => u.role === "executive" || u.role === "sales").map((u) => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -539,6 +639,28 @@ export default function LeadDetail() {
                   <div>
                     <div className="label-caps mb-1.5">Date & time</div>
                     <input type="datetime-local" value={visitAt} onChange={(e) => setVisitAt(e.target.value)} className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="label-caps mb-1.5">Pre-sales owner</div>
+                      <Select value={visitPresalesOwnerId || "__lead__"} onValueChange={(v) => setVisitPresalesOwnerId(v === "__lead__" ? "" : v)}>
+                        <SelectTrigger className="h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__lead__">Lead owner</SelectItem>
+                          {users.filter((u) => u.role === "executive").map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <div className="label-caps mb-1.5">Sales owner</div>
+                      <Select value={visitSalesOwnerId || "__none__"} onValueChange={(v) => setVisitSalesOwnerId(v === "__none__" ? "" : v)}>
+                        <SelectTrigger className="h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Unassigned</SelectItem>
+                          {users.filter((u) => u.role === "sales" || u.role === "executive").map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>
@@ -579,7 +701,7 @@ export default function LeadDetail() {
               </DialogContent>
             </Dialog>
 
-            {lead.phone && (
+            {user?.role === "admin" && lead.phone && (
               <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="w-full h-10 rounded-sm bg-[#25D366]/10 text-[#128C7E] text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-[#25D366]/20 transition-colors duration-150">
                 <MessageSquare className="h-4 w-4" /> WhatsApp
               </a>

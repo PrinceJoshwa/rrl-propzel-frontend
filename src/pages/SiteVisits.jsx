@@ -80,7 +80,8 @@ export default function SiteVisits() {
               {arr.map((v) => {
                 const lead = leads.find((l) => l.id === v.lead_id);
                 const project = projects.find((p) => p.id === v.project_id);
-                const owner = users.find((u) => u.id === v.assigned_to);
+                const presalesOwner = users.find((u) => u.id === (v.presales_owner_id || v.assigned_to));
+                const salesOwner = users.find((u) => u.id === v.sales_owner_id);
                 const time = new Date(v.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                 return (
                   <div key={v.id} data-testid={VISIT.row(v.id)} className="px-5 py-4 flex items-center gap-4 hover:bg-bone-alt/30 transition-colors duration-100">
@@ -96,7 +97,8 @@ export default function SiteVisits() {
                       ) : <span className="text-forest/50">Unknown lead</span>}
                       <div className="text-xs text-forest/60 mt-0.5 flex items-center gap-4">
                         {project && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {project.name}</span>}
-                        {owner && <span className="inline-flex items-center gap-1"><User2 className="h-3 w-3" /> {owner.name}</span>}
+                        {presalesOwner && <span className="inline-flex items-center gap-1"><User2 className="h-3 w-3" /> Pre-sales: {presalesOwner.name}</span>}
+                        {salesOwner && <span className="inline-flex items-center gap-1"><User2 className="h-3 w-3" /> Sales: {salesOwner.name}</span>}
                       </div>
                     </div>
                     <span className={`text-[10px] uppercase tracking-[0.18em] font-bold rounded-sm px-2 py-1 border ${STATUS_TONE[v.status] || ""}`}>

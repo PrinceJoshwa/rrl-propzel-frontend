@@ -8,13 +8,13 @@ import { MessageSquare, Mail, Calendar as CalIcon, Zap, Globe, PhoneCall, CheckC
 
 export default function Settings() {
   const [s, setS] = useState(null);
-  const [tw, setTw] = useState(null);
+  const [calling, setCalling] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
-    const [sr, tr] = await Promise.all([api.get("/settings"), api.get("/twilio/status")]);
+    const [sr, tr] = await Promise.all([api.get("/settings"), api.get("/calling/status")]);
     setS(sr.data);
-    setTw(tr.data);
+    setCalling(tr.data);
   };
   useEffect(() => { load(); }, []);
 
@@ -29,7 +29,7 @@ export default function Settings() {
     finally { setBusy(false); }
   };
 
-  if (!s || !tw) return <div className="text-forest/50 text-sm">Loading…</div>;
+  if (!s || !calling) return <div className="text-forest/50 text-sm">Loading…</div>;
 
   const set = (k, v) => setS({ ...s, [k]: v });
   const webhookBase = `${process.env.REACT_APP_BACKEND_URL}/api/webhooks/leads`;
@@ -65,7 +65,7 @@ export default function Settings() {
       <section className="border border-[#E6E4DD] bg-white rounded-sm p-6 space-y-5">
         <div>
           <div className="font-display font-bold text-xl text-forest tracking-tight">Channels</div>
-          <div className="text-xs text-forest/60 mt-1">Enable outbound channels. Credentials required for live send (mocked in v1).</div>
+            <div className="text-xs text-forest/60 mt-1">Enable outbound channels. Credentials are required for live delivery.</div>
         </div>
 
         <Row
@@ -80,6 +80,20 @@ export default function Settings() {
           <div className="pl-11">
             <div className="label-caps mb-1.5">Business number</div>
             <input value={s.whatsapp_number || ""} onChange={(e) => set("whatsapp_number", e.target.value)} placeholder="+91 90000 00000" className="w-full max-w-md h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            <div className="grid md:grid-cols-2 gap-3 mt-3">
+              <div>
+                <div className="label-caps mb-1.5">Service URL</div>
+                <input value={s.whatsapp_service_url || ""} onChange={(e) => set("whatsapp_service_url", e.target.value)} placeholder="https://wa-service.example.com" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+              </div>
+              <div>
+                <div className="label-caps mb-1.5">Instance ID</div>
+                <input value={s.whatsapp_instance_id || ""} onChange={(e) => set("whatsapp_instance_id", e.target.value)} placeholder="Taskko WhatsApp instance" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="label-caps mb-1.5">Access token</div>
+              <input type="password" value={s.whatsapp_access_token || ""} onChange={(e) => set("whatsapp_access_token", e.target.value)} placeholder="Provided by WhatsApp service" className="w-full max-w-md h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
           </div>
         )}
 
@@ -106,6 +120,18 @@ export default function Settings() {
           checked={!!s.google_calendar_enabled}
           onChange={(v) => set("google_calendar_enabled", v)}
         />
+        {s.google_calendar_enabled && (
+          <div className="pl-11 grid md:grid-cols-2 gap-3">
+            <div>
+              <div className="label-caps mb-1.5">Calendar ID</div>
+              <input value={s.google_calendar_id || ""} onChange={(e) => set("google_calendar_id", e.target.value)} placeholder="primary or calendar id" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+            <div>
+              <div className="label-caps mb-1.5">Credentials JSON</div>
+              <input type="password" value={s.google_calendar_credentials_json || ""} onChange={(e) => set("google_calendar_credentials_json", e.target.value)} placeholder="Client/service-account JSON" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="border border-[#E6E4DD] bg-white rounded-sm p-6">
@@ -113,30 +139,41 @@ export default function Settings() {
           <PhoneCall className="h-4 w-4 mt-1 text-forest/60" />
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <div className="font-display font-bold text-xl text-forest tracking-tight">Twilio calling</div>
-              {tw?.configured ? (
+              <div className="font-display font-bold text-xl text-forest tracking-tight">Calling provider</div>
+              {calling?.configured ? (
                 <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] font-bold text-[#2D6A4F] bg-[#2D6A4F]/10 border border-[#2D6A4F]/30 rounded-sm px-2 py-0.5">
                   <CheckCircle2 className="h-3 w-3" /> Live
                 </span>
               ) : (
-                <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-clay bg-clay/10 border border-clay/30 rounded-sm px-2 py-0.5">Mock mode</span>
+                <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-clay bg-clay/10 border border-clay/30 rounded-sm px-2 py-0.5">Pending credentials</span>
               )}
             </div>
             <div className="text-xs text-forest/60 mt-1">
-              Executive-first bridge: Twilio rings the executive's phone first, then dials the lead. Every call is recorded and pinned to the lead's timeline. Auto-dialer / predictive calling is deferred to a future release.
+              Taskko now uses a provider boundary for call initiation and callbacks. Twilio remains available for existing installs until the client supplies the replacement Calling/SMS API.
             </div>
           </div>
         </div>
 
-        {tw?.configured && (
+        <div className="pl-7 mb-5">
+          <div className="label-caps mb-1.5">Provider</div>
+          <Select value={s.calling_provider || "pending"} onValueChange={(v) => set("calling_provider", v)}>
+            <SelectTrigger className="w-56 h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending client API</SelectItem>
+              <SelectItem value="twilio">Twilio legacy</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {calling?.configured && (
           <div className="grid md:grid-cols-2 gap-2 mb-5 text-xs">
             <div className="border border-[#E6E4DD] rounded-sm px-3 py-2 flex items-center justify-between">
               <span className="uppercase tracking-[0.15em] font-bold text-forest/60">Caller ID</span>
-              <code className="text-forest">{tw.from_number}</code>
+              <code className="text-forest">{calling.from_number}</code>
             </div>
             <div className="border border-[#E6E4DD] rounded-sm px-3 py-2 flex items-center justify-between">
               <span className="uppercase tracking-[0.15em] font-bold text-forest/60">Webhook base</span>
-              <code className="text-forest truncate max-w-[240px]">{tw.webhook_base}</code>
+              <code className="text-forest truncate max-w-[240px]">{calling.webhook_base}</code>
             </div>
           </div>
         )}
@@ -144,7 +181,7 @@ export default function Settings() {
         <Row
           icon={Zap}
           title="Auto-call on new lead"
-          hint="When a fresh lead is assigned to an executive, Twilio instantly rings the executive's phone and bridges the lead. Skip this if you want executives to click Call manually."
+          hint="When a fresh lead is assigned, Taskko asks the configured calling provider to ring the owner."
           testId="settings-toggle-autocall"
           checked={!!s.auto_call_on_new_lead}
           onChange={(v) => set("auto_call_on_new_lead", v)}
@@ -154,7 +191,7 @@ export default function Settings() {
           <Row
             icon={Zap}
             title="Auto follow-up on missed / no-answer calls"
-            hint="If Twilio reports the lead didn't pick up, Tasko creates a follow-up task on the executive's list automatically."
+            hint="If the calling provider reports the lead did not pick up, Taskko creates a follow-up automatically."
             testId="settings-toggle-missed-followup"
             checked={!!s.missed_call_followup_enabled}
             onChange={(v) => set("missed_call_followup_enabled", v)}
@@ -182,9 +219,9 @@ export default function Settings() {
           )}
         </div>
 
-        {!tw?.configured && (
+        {!calling?.configured && (
           <div className="mt-5 text-xs text-forest/50">
-            Set <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_FROM_NUMBER</code> and <code>BACKEND_PUBLIC_URL</code> in the backend .env to enable live calling.
+            Waiting for the client’s replacement Calling/SMS API details. Existing Twilio env vars still enable legacy mode when provider is set to Twilio.
           </div>
         )}
       </section>
@@ -193,17 +230,17 @@ export default function Settings() {
         <div className="flex items-start gap-3 mb-4">
           <PhoneCall className="h-4 w-4 mt-1 text-forest/60" />
           <div>
-            <div className="font-display font-bold text-xl text-forest tracking-tight">Calling & recording providers</div>
+            <div className="font-display font-bold text-xl text-forest tracking-tight">Calling & SMS replacement</div>
             <div className="text-xs text-forest/60 mt-1">
-              Tasko is wired to <b>Twilio Voice REST</b> today. These alternatives can slot in when you outgrow Twilio in India:
+              Current Twilio usage has been isolated behind backend provider functions so the next provider can be added without touching lead screens.
             </div>
           </div>
         </div>
         <div className="grid md:grid-cols-3 gap-3">
           {[
-            { name: "Twilio Voice", tag: "Active", url: "https://twilio.com/voice", active: true },
-            { name: "Exotel", tag: "India · alternative", url: "https://exotel.com" },
-            { name: "MyOperator", tag: "India · alternative", url: "https://myoperator.com" },
+            { name: "Pending API", tag: "Awaiting client details", url: "#", active: true },
+            { name: "Twilio legacy", tag: "Supported temporarily", url: "https://twilio.com/voice" },
+            { name: "SMS provider", tag: "Awaiting client details", url: "#" },
           ].map((p) => (
             <a key={p.name} href={p.url} target="_blank" rel="noreferrer" className={`border rounded-sm p-4 transition-colors duration-150 ${p.active ? "border-forest bg-forest/5" : "border-[#E6E4DD] hover:border-forest"}`}>
               <div className="flex items-center gap-2">
@@ -225,7 +262,7 @@ export default function Settings() {
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-2">
-          {["magicbricks", "99acres", "commonfloor", "housing", "website", "google_ads", "facebook", "instagram"].map((src) => (
+          {["magicbricks", "99acres", "commonfloor", "housing", "website", "jagathi_website", "google_ads", "facebook", "instagram"].map((src) => (
             <div key={src} className="border border-[#E6E4DD] rounded-sm px-3 py-2 flex items-center gap-3">
               <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-forest/60 w-24 shrink-0">{src}</span>
               <code className="text-[11px] text-forest/80 truncate flex-1">{webhookBase}/{src}</code>

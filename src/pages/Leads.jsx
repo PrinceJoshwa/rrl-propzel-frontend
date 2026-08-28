@@ -30,6 +30,7 @@ function LeadCreateDialog({ onCreated, users, projects, activeProjectId }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: "", phone: "", email: "", source: "manual", project_id: activeProjectId || "",
+    secondary_contact_name: "", secondary_contact_email: "", secondary_contact_phone: "",
     budget_min: "", configuration: "", notes: "", assigned_to: "",
   });
   const [busy, setBusy] = useState(false);
@@ -38,7 +39,7 @@ function LeadCreateDialog({ onCreated, users, projects, activeProjectId }) {
     setBusy(true);
     try {
       const body = { ...form };
-      ["project_id", "assigned_to", "email", "budget_min", "configuration", "notes"].forEach((k) => {
+      ["project_id", "assigned_to", "email", "secondary_contact_name", "secondary_contact_email", "secondary_contact_phone", "budget_min", "configuration", "notes"].forEach((k) => {
         if (body[k] === "" || body[k] == null) delete body[k];
       });
       if (body.budget_min) body.budget_min = Number(body.budget_min);
@@ -46,7 +47,7 @@ function LeadCreateDialog({ onCreated, users, projects, activeProjectId }) {
       toast.success(`Lead ${data.name} created`);
       setOpen(false);
       onCreated?.(data);
-      setForm({ ...form, name: "", phone: "", email: "", notes: "" });
+      setForm({ ...form, name: "", phone: "", email: "", secondary_contact_name: "", secondary_contact_email: "", secondary_contact_phone: "", notes: "" });
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     } finally {
@@ -85,6 +86,20 @@ function LeadCreateDialog({ onCreated, users, projects, activeProjectId }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <div className="label-caps mb-1.5">Secondary name</div>
+              <input value={form.secondary_contact_name} onChange={(e) => setForm({ ...form, secondary_contact_name: e.target.value })} className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+            <div>
+              <div className="label-caps mb-1.5">Secondary phone</div>
+              <input value={form.secondary_contact_phone} onChange={(e) => setForm({ ...form, secondary_contact_phone: e.target.value })} className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+          </div>
+          <div>
+            <div className="label-caps mb-1.5">Secondary email</div>
+            <input value={form.secondary_contact_email} onChange={(e) => setForm({ ...form, secondary_contact_email: e.target.value })} className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <div className="label-caps mb-1.5">Source</div>
               <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
                 <SelectTrigger data-testid={LEADS.createSource} className="h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
@@ -120,7 +135,7 @@ function LeadCreateDialog({ onCreated, users, projects, activeProjectId }) {
               <SelectTrigger className="h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__auto__">Auto-assign (least loaded)</SelectItem>
-                {users.filter((u) => u.role === "executive").map((u) => (
+                {users.filter((u) => u.role === "executive" || u.role === "sales").map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -138,7 +153,7 @@ function LeadCreateDialog({ onCreated, users, projects, activeProjectId }) {
   );
 }
 
-function KanbanBoard({ leads, onMove, users }) {
+function KanbanBoard({ leads, onMove, users, canMove }) {
   const byStage = useMemo(() => {
     const m = Object.fromEntries(STAGE_META.map((s) => [s.key, []]));
     leads.forEach((l) => { if (m[l.stage]) m[l.stage].push(l); });
@@ -148,7 +163,7 @@ function KanbanBoard({ leads, onMove, users }) {
   const onDragStart = (e, id) => { e.dataTransfer.setData("text/plain", id); };
   const onDrop = async (e, stage) => {
     const id = e.dataTransfer.getData("text/plain");
-    if (!id) return;
+    if (!id || !canMove) return;
     await onMove(id, stage);
   };
 
@@ -177,7 +192,7 @@ function KanbanBoard({ leads, onMove, users }) {
                   <Link
                     to={`/leads/${l.id}`}
                     key={l.id}
-                    draggable
+                    draggable={canMove}
                     onDragStart={(e) => onDragStart(e, l.id)}
                     data-testid={LEADS.kanbanCard(l.id)}
                     className="block bg-white border border-[#E6E4DD] rounded-sm p-3 hover:border-forest transition-colors duration-150 cursor-grab active:cursor-grabbing"
@@ -278,7 +293,7 @@ export default function Leads() {
   const [projectFilter, setProjectFilter] = useState(params.get("project_id") || "");
   const [createdFilter, setCreatedFilter] = useState(params.get("created") || "");
   const [loading, setLoading] = useState(false);
-  const [editLead, setEditLead] = useState(null);
+  const canModifyLead = user?.role === "admin";
 
   // Sync filters → URL
   useEffect(() => {
@@ -359,7 +374,7 @@ export default function Leads() {
               <List className="h-3.5 w-3.5" /> List
             </button>
           </div>
-          <LeadCreateDialog users={users} projects={projects} activeProjectId={activeId !== "__all__" ? activeId : ""} onCreated={load} />
+          {canModifyLead && <LeadCreateDialog users={users} projects={projects} activeProjectId={activeId !== "__all__" ? activeId : ""} onCreated={load} />}
         </div>
       </div>
 
@@ -390,7 +405,7 @@ export default function Leads() {
           <SelectTrigger data-testid={LEADS.filterExec} className="w-[160px] h-8 rounded-sm border-[#E6E4DD]"><SelectValue placeholder="Executive" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All executives</SelectItem>
-            {users.filter((u) => u.role === "executive").map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+            {users.filter((u) => u.role === "executive" || u.role === "sales").map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={projectFilter || "__all__"} onValueChange={(v) => setProjectFilter(v === "__all__" ? "" : v)}>
@@ -405,7 +420,7 @@ export default function Leads() {
       {loading ? (
         <div className="text-forest/50 text-sm">Loading…</div>
       ) : view === "kanban" ? (
-        <KanbanBoard leads={leads} onMove={move} users={users} />
+        <KanbanBoard leads={leads} onMove={move} users={users} canMove={canModifyLead} />
       ) : (
         <LeadsTable leads={leads} users={users} />
       )}
