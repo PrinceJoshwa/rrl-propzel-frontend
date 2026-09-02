@@ -48,9 +48,14 @@ export default function Sidebar() {
   const { user, logout, setUser } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [phone, setPhone] = useState(user?.phone || "");
+  const phoneMasked = !!user?.phone_masked;
 
   const saveProfile = async () => {
     try {
+      if (phoneMasked && !phone.trim()) {
+        toast.info("Enter a new phone number to update your profile");
+        return;
+      }
       const { data } = await api.patch("/users/me", { phone });
       setUser(data);
       toast.success("Profile updated");
@@ -107,7 +112,7 @@ export default function Sidebar() {
       <div className="relative z-10 px-4 pb-6">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { setPhone(user?.phone || ""); setProfileOpen(true); }}
+            onClick={() => { setPhone(phoneMasked ? "" : user?.phone || ""); setProfileOpen(true); }}
             className="h-9 w-9 rounded-sm bg-white/10 hover:bg-white/20 grid place-items-center text-sm font-display font-bold transition-colors duration-150"
             data-testid="sidebar-profile-btn"
             title="My profile"
@@ -146,6 +151,7 @@ export default function Sidebar() {
             </div>
             <div>
               <div className="label-caps mb-1.5">Phone (E.164 · used for call bridging)</div>
+              {phoneMasked && <div className="text-xs text-forest/60 mb-2">Phone is already set. Enter a new number only when you want to replace it.</div>}
               <input
                 data-testid="profile-phone-input"
                 value={phone}
