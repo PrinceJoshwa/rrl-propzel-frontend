@@ -4,8 +4,7 @@ import { api, asArray, formatApiError, relTime } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  FileDown, FileText, Layers, MessageSquare,
-  Plus, PlugZap, RefreshCw, Send, Trash2, Users,
+  Layers, MessageSquare, PlugZap, RefreshCw, Send, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,8 +12,6 @@ const FEATURES = [
   { key: "single", label: "Send Single Message", hint: "Send a quick message to a lead", icon: Send },
   { key: "bulk", label: "Bulk messaging", hint: "Send to multiple recipients", icon: MessageSquare },
   { key: "templates", label: "Templates", hint: "Create and manage templates", icon: Layers, to: "/whatsapp/templates" },
-  { key: "export", label: "Export participants", hint: "Export conversation list", icon: FileDown },
-  { key: "forms", label: "Form Builder", hint: "WhatsApp lead capture forms", icon: FileText },
 ];
 
 const FEATURE_KEYS = new Set(FEATURES.map((f) => f.key));
@@ -150,59 +147,12 @@ function BulkSendDialog({ leads, onSent, children }) {
   );
 }
 
-function FormsPanel({ forms, onChange }) {
-  const [name, setName] = useState("");
-  const save = async () => {
-    if (!name.trim()) return;
-    try {
-      await api.post("/whatsapp/forms", { name: name.trim(), fields: ["name", "phone", "email"] });
-      toast.success("WhatsApp form created");
-      setName("");
-      onChange?.();
-    } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail));
-    }
-  };
-  const remove = async (id) => {
-    try {
-      await api.delete(`/whatsapp/forms/${id}`);
-      toast.success("Form deleted");
-      onChange?.();
-    } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail));
-    }
-  };
-  return (
-    <section className="border border-[#E6E4DD] bg-white rounded-sm p-5">
-      <div className="label-caps">Form Builder</div>
-      <h3 className="font-display font-bold text-xl text-forest mt-1 mb-4">WhatsApp lead capture forms</h3>
-      <div className="flex gap-2 mb-4">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Form name" className="flex-1 h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
-        <button onClick={save} className="h-10 px-3 rounded-sm bg-forest text-white text-sm font-medium hover:bg-forest-soft inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Add</button>
-      </div>
-      <div className="divide-y divide-[#E6E4DD] border border-[#E6E4DD] rounded-sm overflow-hidden">
-        {forms.map((f) => (
-          <div key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <div className="font-medium text-forest truncate">{f.name}</div>
-              <div className="text-xs text-forest/50 truncate">{f.webhook_url}</div>
-            </div>
-            <button onClick={() => remove(f.id)} className="h-8 w-8 rounded-sm border border-[#E6E4DD] grid place-items-center text-clay hover:border-clay" title="Delete"><Trash2 className="h-4 w-4" /></button>
-          </div>
-        ))}
-        {forms.length === 0 && <div className="text-sm text-forest/50 text-center py-8">No forms yet.</div>}
-      </div>
-    </section>
-  );
-}
-
 export default function WhatsApp() {
   const navigate = useNavigate();
   const { feature: featureParam } = useParams();
   const [status, setStatus] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
-  const [forms, setForms] = useState([]);
   const [items, setItems] = useState([]);
   const [leads, setLeads] = useState([]);
   const [active, setActive] = useState(null);
@@ -211,18 +161,16 @@ export default function WhatsApp() {
   const activeFeature = FEATURES.find((f) => f.key === feature);
 
   const load = async () => {
-    const [sr, ar, cr, lr, cpr, fr] = await Promise.all([
+    const [sr, ar, cr, lr, cpr] = await Promise.all([
       api.get("/whatsapp/status"),
       api.get("/whatsapp/analytics"),
       api.get("/whatsapp/conversations"),
       api.get("/leads"),
       api.get("/whatsapp/campaigns"),
-      api.get("/whatsapp/forms"),
     ]);
     setStatus(sr.data);
     setAnalytics(ar.data);
     setCampaigns(asArray(cpr.data));
-    setForms(asArray(fr.data));
     const conversations = asArray(cr.data);
     setItems(conversations);
     setLeads(asArray(lr.data));
@@ -248,19 +196,6 @@ export default function WhatsApp() {
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     }
-  };
-
-  const exportParticipants = () => {
-    const rows = [["Name", "Phone", "Last Message", "Updated"]];
-    items.forEach((c) => rows.push([c.contact_name || "", c.contact_phone || "", c.last_message || "", c.updated_at || ""]));
-    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "taskko-whatsapp-participants.csv";
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const featureContent = useMemo(() => {
@@ -303,10 +238,9 @@ export default function WhatsApp() {
         </div>
       </section>
     );
-    if (feature === "forms") return <FormsPanel forms={forms} onChange={load} />;
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feature, forms, leads, campaigns]);
+  }, [feature, leads, campaigns]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[310px_1fr] gap-6">
@@ -326,7 +260,7 @@ export default function WhatsApp() {
             {FEATURES.map((f) => {
               const Icon = f.icon;
               const item = (
-                <button onClick={() => f.key === "export" ? exportParticipants() : navigate(`/whatsapp/${f.key}`)} className={`w-full flex items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors duration-150 ${feature === f.key ? "bg-bone-alt text-forest" : "hover:bg-bone-alt/60 text-forest/80"}`}>
+                <button onClick={() => navigate(`/whatsapp/${f.key}`)} className={`w-full flex items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors duration-150 ${feature === f.key ? "bg-bone-alt text-forest" : "hover:bg-bone-alt/60 text-forest/80"}`}>
                   <span className="h-9 w-9 rounded-sm border border-[#E6E4DD] grid place-items-center text-clay bg-white shrink-0"><Icon className="h-4 w-4" /></span>
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold truncate">{f.label}</span>

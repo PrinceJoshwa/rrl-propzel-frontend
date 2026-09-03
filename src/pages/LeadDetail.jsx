@@ -358,23 +358,34 @@ export default function LeadDetail() {
   const [visitOpen, setVisitOpen] = useState(false);
 
   const load = async () => {
-    const [l, u, p, a, t] = await Promise.all([
-      api.get(`/leads/${leadId}`),
-      api.get("/users"),
-      api.get("/projects"),
-      api.get("/activities", { params: { lead_id: leadId, limit: 100 } }),
-      api.get("/whatsapp-templates"),
-    ]);
-    setLead(l.data);
-    setUsers(asArray(u.data));
-    setProjects(asArray(p.data));
-    setActivities(asArray(a.data));
-    setTemplates(asArray(t.data));
-    setVisitProjectId(l.data.project_id || "");
+    try {
+      const [l, u, p, a] = await Promise.all([
+        api.get(`/leads/${leadId}`),
+        api.get("/users"),
+        api.get("/projects"),
+        api.get("/activities", { params: { lead_id: leadId, limit: 100 } }),
+      ]);
+      setLead(l.data);
+      setUsers(asArray(u.data));
+      setProjects(asArray(p.data));
+      setActivities(asArray(a.data));
+      setVisitProjectId(l.data.project_id || "");
+      if (user?.role === "admin") {
+        api.get("/whatsapp-templates")
+          .then((t) => setTemplates(asArray(t.data)))
+          .catch(() => setTemplates([]));
+      } else {
+        setTemplates([]);
+      }
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+      setLead(false);
+    }
   };
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [leadId]);
+  if (lead === false) return <div className="text-clay text-sm">Lead failed to load.</div>;
   if (!lead) return <div className="text-forest/50 text-sm">Loading lead…</div>;
 
   const owner = users.find((u) => u.id === lead.assigned_to);
