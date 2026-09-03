@@ -4,20 +4,16 @@ import { api, asArray, formatApiError, relTime } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Bot, Cable, Coins, FileDown, FileText, Layers, MessageCircle, MessageSquare,
-  Plus, PlugZap, QrCode, RefreshCw, Send, Trash2, UserRound, Users,
+  FileDown, FileText, Layers, MessageSquare,
+  Plus, PlugZap, RefreshCw, Send, Trash2, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const FEATURES = [
   { key: "single", label: "Send Single Message", hint: "Send a quick message to a lead", icon: Send },
-  { key: "profile", label: "Profile", hint: "WhatsApp account information", icon: UserRound },
   { key: "bulk", label: "Bulk messaging", hint: "Send to multiple recipients", icon: MessageSquare },
-  { key: "autoresponder", label: "Autoresponder", hint: "Pre-written reply rules", icon: MessageCircle },
-  { key: "chatbot", label: "Chatbot", hint: "Automation bots", icon: Bot },
   { key: "templates", label: "Templates", hint: "Create and manage templates", icon: Layers, to: "/whatsapp/templates" },
   { key: "export", label: "Export participants", hint: "Export conversation list", icon: FileDown },
-  { key: "api", label: "API", hint: "WhatsApp REST connection", icon: Cable },
   { key: "forms", label: "Form Builder", hint: "WhatsApp lead capture forms", icon: FileText },
 ];
 
@@ -154,63 +150,6 @@ function BulkSendDialog({ leads, onSent, children }) {
   );
 }
 
-function RulePanel({ title, items, endpoint, onChange }) {
-  const [form, setForm] = useState({ name: "", keywords: "", reply_text: "", active: true });
-  const save = async () => {
-    if (!form.name.trim()) return;
-    try {
-      await api.post(endpoint, form);
-      toast.success(`${title} saved`);
-      setForm({ name: "", keywords: "", reply_text: "", active: true });
-      onChange?.();
-    } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail));
-    }
-  };
-  const remove = async (id) => {
-    try {
-      await api.delete(`${endpoint}/${id}`);
-      toast.success(`${title} deleted`);
-      onChange?.();
-    } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail));
-    }
-  };
-  return (
-    <section className="border border-[#E6E4DD] bg-white rounded-sm p-5">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <div className="label-caps">{title}</div>
-          <h3 className="font-display font-bold text-xl text-forest mt-1">{title === "Autoresponder" ? "Pre-written reply rules" : "Automation bot rules"}</h3>
-        </div>
-        <span className="text-xs text-forest/50">{items.length} active</span>
-      </div>
-      <div className="grid md:grid-cols-4 gap-2 mb-4">
-        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Rule name" className="h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
-        <input value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} placeholder="Keywords comma separated" className="h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
-        <input value={form.reply_text} onChange={(e) => setForm({ ...form, reply_text: e.target.value })} placeholder="Reply text" className="h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
-        <button onClick={save} className="h-10 px-3 rounded-sm bg-forest text-white text-sm font-medium hover:bg-forest-soft inline-flex items-center justify-center gap-2">
-          <Plus className="h-4 w-4" /> Add
-        </button>
-      </div>
-      <div className="divide-y divide-[#E6E4DD] border border-[#E6E4DD] rounded-sm overflow-hidden">
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <div className="font-medium text-forest truncate">{item.name}</div>
-              <div className="text-xs text-forest/50 truncate">{item.keywords || "No keywords"} {item.reply_text ? `- ${item.reply_text}` : ""}</div>
-            </div>
-            <button onClick={() => remove(item.id)} className="h-8 w-8 rounded-sm border border-[#E6E4DD] grid place-items-center text-clay hover:border-clay" title="Delete">
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-        {items.length === 0 && <div className="text-sm text-forest/50 text-center py-8">No records yet.</div>}
-      </div>
-    </section>
-  );
-}
-
 function FormsPanel({ forms, onChange }) {
   const [name, setName] = useState("");
   const save = async () => {
@@ -262,13 +201,8 @@ export default function WhatsApp() {
   const { feature: featureParam } = useParams();
   const [status, setStatus] = useState(null);
   const [analytics, setAnalytics] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [apiInfo, setApiInfo] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
-  const [autoresponders, setAutoresponders] = useState([]);
-  const [chatbots, setChatbots] = useState([]);
   const [forms, setForms] = useState([]);
-  const [qr, setQr] = useState(null);
   const [items, setItems] = useState([]);
   const [leads, setLeads] = useState([]);
   const [active, setActive] = useState(null);
@@ -277,25 +211,17 @@ export default function WhatsApp() {
   const activeFeature = FEATURES.find((f) => f.key === feature);
 
   const load = async () => {
-    const [sr, ar, cr, lr, pr, air, cpr, arr, chr, fr] = await Promise.all([
+    const [sr, ar, cr, lr, cpr, fr] = await Promise.all([
       api.get("/whatsapp/status"),
       api.get("/whatsapp/analytics"),
       api.get("/whatsapp/conversations"),
       api.get("/leads"),
-      api.get("/whatsapp/profile"),
-      api.get("/whatsapp/api"),
       api.get("/whatsapp/campaigns"),
-      api.get("/whatsapp/autoresponders"),
-      api.get("/whatsapp/chatbots"),
       api.get("/whatsapp/forms"),
     ]);
     setStatus(sr.data);
     setAnalytics(ar.data);
-    setProfile(pr.data);
-    setApiInfo(air.data);
     setCampaigns(asArray(cpr.data));
-    setAutoresponders(asArray(arr.data));
-    setChatbots(asArray(chr.data));
     setForms(asArray(fr.data));
     const conversations = asArray(cr.data);
     setItems(conversations);
@@ -319,16 +245,6 @@ export default function WhatsApp() {
       if (r.data.status === "pending_credentials") toast.warning(r.data.message);
       else toast.success("WhatsApp service is ready to connect");
       load();
-    } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail));
-    }
-  };
-
-  const getQr = async () => {
-    try {
-      const r = await api.get("/whatsapp/qrcode");
-      setQr(r.data);
-      if (r.data.status === "pending_credentials") toast.warning(r.data.message);
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail));
     }
@@ -387,46 +303,10 @@ export default function WhatsApp() {
         </div>
       </section>
     );
-    if (feature === "profile") return (
-      <section className="border border-[#E6E4DD] bg-white rounded-sm p-5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="label-caps">Profile</div>
-            <h3 className="font-display font-bold text-xl text-forest mt-1">WhatsApp account information</h3>
-            <div className="text-sm text-forest/60 mt-2">Provider: {profile?.provider || "pending"} | Phone: {profile?.phone || "Not set"}</div>
-            <div className="text-xs text-forest/45 mt-1">Instance: {profile?.instance_id || "Hidden or not configured"}</div>
-          </div>
-          <button onClick={getQr} className="h-10 px-3 rounded-sm border border-[#E6E4DD] bg-white text-forest text-sm font-medium hover:border-forest inline-flex items-center gap-2"><QrCode className="h-4 w-4" /> Get QR</button>
-        </div>
-        {qr?.base64 && <img src={qr.base64} alt="WhatsApp QR code" className="mt-4 h-48 w-48 border border-[#E6E4DD] rounded-sm" />}
-        {qr && !qr.base64 && <pre className="mt-4 text-xs bg-bone-alt/60 border border-[#E6E4DD] rounded-sm p-3 overflow-auto">{JSON.stringify(qr, null, 2)}</pre>}
-      </section>
-    );
-    if (feature === "autoresponder") return <RulePanel title="Autoresponder" items={autoresponders} endpoint="/whatsapp/autoresponders" onChange={load} />;
-    if (feature === "chatbot") return <RulePanel title="Chatbot" items={chatbots} endpoint="/whatsapp/chatbots" onChange={load} />;
-    if (feature === "api") return (
-      <section className="border border-[#E6E4DD] bg-white rounded-sm p-5">
-        <div className="label-caps">API</div>
-        <h3 className="font-display font-bold text-xl text-forest mt-1 mb-4">WhatsApp REST connection</h3>
-        <div className="grid md:grid-cols-2 gap-3 mb-4 text-sm">
-          <div className="bg-bone-alt/50 rounded-sm p-3">Configured: <b>{apiInfo?.configured ? "Yes" : "No"}</b></div>
-          <div className="bg-bone-alt/50 rounded-sm p-3">Instance: <b>{apiInfo?.instance_id || "Hidden / not set"}</b></div>
-        </div>
-        <div className="divide-y divide-[#E6E4DD] border border-[#E6E4DD] rounded-sm overflow-hidden">
-          {(apiInfo?.endpoints || []).map((e) => (
-            <div key={`${e.method}-${e.path}`} className="px-4 py-3 text-sm">
-              <span className="font-mono text-xs bg-forest text-white rounded-sm px-2 py-1 mr-2">{e.method}</span>
-              <span className="font-mono text-forest">{e.path}</span>
-              <div className="text-xs text-forest/50 mt-1">{e.purpose}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
     if (feature === "forms") return <FormsPanel forms={forms} onChange={load} />;
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feature, profile, qr, autoresponders, chatbots, forms, apiInfo, leads, campaigns]);
+  }, [feature, forms, leads, campaigns]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[310px_1fr] gap-6">
@@ -489,20 +369,15 @@ export default function WhatsApp() {
         </div>
 
         <section className="border border-[#9AE6B4] bg-[#F0FFF4] rounded-sm p-5 flex items-start gap-3">
-          <Cable className="h-5 w-5 mt-0.5 text-[#2D6A4F]" />
+          <PlugZap className="h-5 w-5 mt-0.5 text-[#2D6A4F]" />
           <div>
-            <div className="font-display font-bold text-lg text-forest">Connect WhatsApp Cloud API</div>
-            <div className="text-sm text-forest/70 mt-1">Use the extracted WhatsApp service or Meta Embedded Signup credentials to connect a WhatsApp Business account and phone number.</div>
+            <div className="font-display font-bold text-lg text-forest">Admin WhatsApp connection</div>
+            <div className="text-sm text-forest/70 mt-1">Taskko is configured to use the shared admin WhatsApp account from the existing Marketly service.</div>
           </div>
         </section>
 
         {feature === "dashboard" && (
-          <div className="grid md:grid-cols-2 2xl:grid-cols-4 gap-4">
-            <StatCard icon={Coins} label="Available Credits" value={(analytics?.available_credits ?? 0).toLocaleString()} sub={`Plan Limit: ${(analytics?.plan_limit ?? 0).toLocaleString()}`} tone="violet" />
-            <StatCard icon={Send} label="Messages Sent" value={analytics?.messages_sent ?? 0} sub={`${analytics?.messages_this_month ?? 0} this month`} tone="violet" />
-            <StatCard icon={Layers} label="Bulk Delivered" value={analytics?.bulk_delivered ?? 0} sub={`${analytics?.delivery_success_pct ?? 100}% success`} tone="green" />
-            <StatCard icon={MessageCircle} label="Autoresponder" value={analytics?.autoresponder ?? 0} sub="active rules" tone="amber" />
-            <StatCard icon={Bot} label="Chatbot" value={analytics?.chatbot ?? 0} sub="bots" tone="pink" />
+          <div className="grid md:grid-cols-2 gap-4">
             <StatCard icon={Users} label="Conversations" value={analytics?.conversations ?? 0} sub={`${analytics?.templates ?? 0} templates`} tone="green" />
           </div>
         )}

@@ -5,7 +5,7 @@ import { api, formatApiError } from "@/lib/api";
 import {
   LayoutDashboard, Users2, Building2, BedDouble, CalendarClock, BellRing,
   UserCog, Settings as SettingsIcon, LogOut, BarChart3, UploadCloud,
-  MessageSquareText, ShuffleIcon, Handshake, FileText, User,
+  MessageSquareText, ShuffleIcon, Handshake, FileText, User, PhoneCall,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { NAV, AUTH } from "@/constants/testIds";
@@ -33,8 +33,9 @@ const GROUPS = [
     items: [
       { to: "/reports", label: "Reports", icon: BarChart3, testId: NAV.itemReports },
       { to: "/data-import", label: "Data Import", icon: UploadCloud, testId: NAV.itemDataImport, role: ["admin"] },
-      { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
-      { to: "/wa-templates", label: "WhatsApp Templates", icon: MessageSquareText, testId: NAV.itemWATemplates },
+      { to: "/callerdesk", label: "CallerDesk", icon: PhoneCall, role: ["admin", "manager"] },
+      { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText, role: ["admin"] },
+      { to: "/whatsapp/templates", label: "WhatsApp Templates", icon: MessageSquareText, testId: NAV.itemWATemplates, role: ["admin"] },
       { to: "/bulk-allocation", label: "Bulk Lead Allocation", icon: ShuffleIcon, testId: NAV.itemBulkAlloc, role: ["admin"] },
       { to: "/partners", label: "Channel Partners", icon: Handshake, testId: NAV.itemPartners },
       { to: "/proposals", label: "Proposals", icon: FileText, testId: NAV.itemProposals },

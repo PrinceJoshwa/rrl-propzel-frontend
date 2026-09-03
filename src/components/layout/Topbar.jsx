@@ -24,6 +24,7 @@ const TITLES = {
   "/reports": "Reports",
   "/data-import": "Data Import",
   "/wa-templates": "WhatsApp Templates",
+  "/callerdesk": "CallerDesk",
   "/bulk-allocation": "Bulk Lead Allocation",
   "/partners": "Channel Partners",
   "/proposals": "Proposals",
@@ -32,7 +33,7 @@ const TITLES = {
 export default function Topbar() {
   const { projects, activeId, setActive } = useProjects();
   const { pathname } = useLocation();
-  const title = TITLES[pathname] || (pathname.startsWith("/leads/") ? "Lead" : "Tasko");
+  const title = TITLES[pathname] || (pathname.startsWith("/callerdesk") ? "CallerDesk" : pathname.startsWith("/leads/") ? "Lead" : "Tasko");
   // Project switcher only appears on pages where it actually filters data.
   const SHOW_ON = new Set(["/projects", "/inventory", "/site-visits", "/follow-ups"]);
   const showSwitcher = SHOW_ON.has(pathname);

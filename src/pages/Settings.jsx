@@ -160,10 +160,32 @@ export default function Settings() {
             <SelectTrigger className="w-56 h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="pending">Pending client API</SelectItem>
+              <SelectItem value="callerdesk">CallerDesk</SelectItem>
               <SelectItem value="twilio">Twilio legacy</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {s.calling_provider === "callerdesk" && (
+          <div className="pl-7 mb-5 grid md:grid-cols-2 gap-3">
+            <div>
+              <div className="label-caps mb-1.5">CallerDesk base URL</div>
+              <input value={s.callerdesk_base_url || ""} onChange={(e) => set("callerdesk_base_url", e.target.value)} placeholder="https://app.callerdesk.io/api" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+            <div>
+              <div className="label-caps mb-1.5">Virtual / desk phone</div>
+              <input value={s.callerdesk_virtual_number || ""} onChange={(e) => set("callerdesk_virtual_number", e.target.value)} placeholder="CallerDesk DID / deskphone" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+            <div>
+              <div className="label-caps mb-1.5">Authcode</div>
+              <input type="password" value={s.callerdesk_authcode || ""} onChange={(e) => set("callerdesk_authcode", e.target.value)} placeholder="Provided by CallerDesk" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+            <div>
+              <div className="label-caps mb-1.5">Webhook secret</div>
+              <input type="password" value={s.callerdesk_webhook_secret || ""} onChange={(e) => set("callerdesk_webhook_secret", e.target.value)} placeholder="Optional shared secret" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            </div>
+          </div>
+        )}
 
         {calling?.configured && (
           <div className="grid md:grid-cols-2 gap-2 mb-5 text-xs">
@@ -221,7 +243,7 @@ export default function Settings() {
 
         {!calling?.configured && (
           <div className="mt-5 text-xs text-forest/50">
-            Waiting for the client’s replacement Calling/SMS API details. Existing Twilio env vars still enable legacy mode when provider is set to Twilio.
+            Waiting for live calling credentials. Existing Twilio env vars still enable legacy mode when provider is set to Twilio.
           </div>
         )}
       </section>
@@ -238,7 +260,7 @@ export default function Settings() {
         </div>
         <div className="grid md:grid-cols-3 gap-3">
           {[
-            { name: "Pending API", tag: "Awaiting client details", url: "#", active: true },
+            { name: "CallerDesk", tag: s.calling_provider === "callerdesk" ? "Selected provider" : "Available", url: "https://api.callerdesk.io", active: s.calling_provider === "callerdesk" },
             { name: "Twilio legacy", tag: "Supported temporarily", url: "https://twilio.com/voice" },
             { name: "SMS provider", tag: "Awaiting client details", url: "#" },
           ].map((p) => (

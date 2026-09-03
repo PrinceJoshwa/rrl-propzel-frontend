@@ -61,6 +61,7 @@ function LogCallDialog({ leadId, onSaved }) {
                   <SelectItem value="missed">Missed</SelectItem>
                   <SelectItem value="busy">Busy</SelectItem>
                   <SelectItem value="no_answer">No answer</SelectItem>
+                  <SelectItem value="dnp">DNP</SelectItem>
                   <SelectItem value="voicemail">Voicemail</SelectItem>
                 </SelectContent>
               </Select>
@@ -492,16 +493,17 @@ export default function LeadDetail() {
             </div>
           </div>
 
-          <WhatsAppPanel leadId={leadId} />
+          {user?.role === "admin" && <WhatsAppPanel leadId={leadId} />}
 
-          {/* Twilio Call button (live) + manual log actions */}
+          {/* Calling provider button + manual log actions */}
           <div className="grid grid-cols-4 gap-3">
             <button
               data-testid="lead-twilio-call-btn"
               onClick={async () => {
                 try {
                   const { data } = await api.post(`/leads/${leadId}/call`);
-                  if (data.mock) toast.info("Twilio not configured — mock call logged");
+                  if (data.mock) toast.info("Twilio not configured; mock call logged");
+                  else if (data.status === "pending_credentials") toast.info("Calling provider credentials pending; call logged");
                   else toast.success(`Ringing your phone… (${data.status})`);
                   load();
                 } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }

@@ -746,6 +746,7 @@ function ActionItemsTab() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi testId="dash-kpi-missed" label="Missed calls" value={w.missed_calls} sub="Today · click to review" icon={PhoneMissed} tone="clay" onClick={() => nav("/leads")} />
+        <Kpi testId="dash-kpi-dnp" label="DNP calls" value={w.dnp_calls} sub="Did not pick today" icon={PhoneMissed} tone="clay" onClick={() => nav("/callerdesk/logs")} />
         <Kpi testId="dash-kpi-followups" label="Today's follow-ups" value={w.todays_followups} sub="Scheduled today" icon={BellRing} onClick={() => nav("/follow-ups")} />
         <Kpi testId="dash-kpi-scheduled-calls" label="Scheduled calls" value={w.scheduled_calls} sub="All time" icon={Phone} onClick={() => nav("/follow-ups")} />
         <Kpi testId="dash-kpi-tasks" label="Tasks" value={w.tasks} sub="Meetings / emails / WA" icon={ListTodo} tone="wheat" onClick={() => nav("/follow-ups")} />
