@@ -157,6 +157,9 @@ export default function WhatsApp() {
   const [leads, setLeads] = useState([]);
   const [active, setActive] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrCode, setQrCode] = useState("");
+  const [qrBusy, setQrBusy] = useState(false);
   const feature = FEATURE_KEYS.has(featureParam) ? featureParam : "dashboard";
   const activeFeature = FEATURES.find((f) => f.key === feature);
 
@@ -187,14 +190,34 @@ export default function WhatsApp() {
       .catch((e) => toast.error(formatApiError(e.response?.data?.detail)));
   }, [active]);
 
+  const fetchQrCode = async () => {
+    setQrBusy(true);
+    try {
+      const r = await api.get("/whatsapp/qrcode");
+      const data = r.data;
+      const value = data?.qrcode || data?.qr_code || data?.qr || data?.data?.qrcode || data?.data?.qr || (typeof data === "string" ? data : "");
+      if (!value) throw new Error("The WhatsApp service did not return a QR code");
+      setQrCode(value);
+      setQrOpen(true);
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setQrBusy(false);
+    }
+  };
+
   const connect = async () => {
     try {
       const r = await api.post("/whatsapp/connect");
-      if (r.data.status === "pending_credentials") toast.warning(r.data.message);
-      else toast.success("WhatsApp service is ready to connect");
+      if (r.data.status === "pending_credentials") {
+        toast.warning(r.data.message);
+      } else {
+        toast.success("WhatsApp connection started");
+        await fetchQrCode();
+      }
       load();
     } catch (e) {
-      toast.error(formatApiError(e.response?.data?.detail));
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
     }
   };
 
@@ -243,6 +266,7 @@ export default function WhatsApp() {
   }, [feature, leads, campaigns]);
 
   return (
+    <>
     <div className="grid grid-cols-1 xl:grid-cols-[310px_1fr] gap-6">
       <aside className="border border-[#E6E4DD] bg-white rounded-sm overflow-hidden">
         <div className="p-5 border-b border-[#E6E4DD]">
@@ -365,5 +389,28 @@ export default function WhatsApp() {
         </div>}
       </main>
     </div>
+    <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+      <DialogContent className="rounded-sm max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">Connect WhatsApp</DialogTitle>
+        </DialogHeader>
+        <div className="text-center space-y-4">
+          <p className="text-sm text-forest/60">Open WhatsApp on your phone and scan this QR code from Linked devices.</p>
+          <div className="min-h-[280px] grid place-items-center border border-[#E6E4DD] bg-white rounded-sm p-4">
+            {qrBusy ? <RefreshCw className="h-8 w-8 animate-spin text-forest/50" /> : (
+              <img
+                src={qrCode.startsWith("data:") || qrCode.startsWith("http") ? qrCode : `data:image/png;base64,${qrCode}`}
+                alt="WhatsApp connection QR code"
+                className="h-64 w-64 object-contain"
+              />
+            )}
+          </div>
+          <button onClick={fetchQrCode} disabled={qrBusy} className="h-10 px-4 rounded-sm border border-[#E6E4DD] bg-white text-forest text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50">
+            <RefreshCw className={`h-4 w-4 ${qrBusy ? "animate-spin" : ""}`} /> Refresh QR
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
