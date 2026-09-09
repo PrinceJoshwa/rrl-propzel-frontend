@@ -195,6 +195,13 @@ export default function WhatsApp() {
     try {
       const r = await api.get("/whatsapp/qrcode");
       const data = r.data;
+      if (data?.status === "error") {
+        if (/instance id has been used|already connected/i.test(data.message || "")) {
+          toast.info("WhatsApp is already connected. No QR scan is required.");
+          return;
+        }
+        throw new Error(data.message || "WhatsApp QR generation failed");
+      }
       const value = data?.qrcode || data?.qr_code || data?.qr || data?.data?.qrcode || data?.data?.qr || (typeof data === "string" ? data : "");
       if (!value) throw new Error("The WhatsApp service did not return a QR code");
       setQrCode(value);
