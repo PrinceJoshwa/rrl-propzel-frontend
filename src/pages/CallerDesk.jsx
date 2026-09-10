@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, asArray, formatApiError, relTime } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, ListFilter, Megaphone, PhoneCall, PhoneOutgoing, Play, Pause, Trash2, RefreshCcw, Search, Settings } from "lucide-react";
+import { BarChart3, ListFilter, Megaphone, PhoneCall, PhoneOutgoing, Play, Pause, Trash2, RefreshCcw, Search, Settings, Mail, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 
 const FEATURES = [
   { key: "dashboard", label: "Dashboard", hint: "Calling performance", icon: BarChart3 },
   { key: "dialer", label: "Dialer", hint: "Click-to-call a lead", icon: PhoneOutgoing },
   { key: "campaigns", label: "Campaign Dialer", hint: "Bulk calling queue", icon: Megaphone },
+  { key: "message-campaigns", label: "Message Campaigns", hint: "Email, SMS and WhatsApp", icon: MessageSquareText },
   { key: "logs", label: "Call Logs", hint: "Filter calls and SIDs", icon: ListFilter },
   { key: "settings", label: "Settings", hint: "Connection status", icon: Settings },
 ];
@@ -212,6 +213,75 @@ function CampaignsPanel({ leads, campaigns, loadCampaigns }) {
   );
 }
 
+function MessageCampaignsPanel({ leads, campaigns, loadCampaigns }) {
+  const [name, setName] = useState("");
+  const [channel, setChannel] = useState("whatsapp");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("all");
+  const [leadIds, setLeadIds] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  const create = async () => {
+    if (!name.trim() || !message.trim()) return toast.error("Campaign name and message are required");
+    setBusy(true);
+    try {
+      await api.post("/message-campaigns", {
+        name: name.trim(), channel, subject: channel === "email" ? subject.trim() : undefined,
+        message: message.trim(), lead_ids: leadIds, call_status: status,
+      });
+      setName(""); setSubject(""); setMessage(""); setLeadIds([]); setStatus("all");
+      toast.success("Message campaign created");
+      loadCampaigns();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setBusy(false); }
+  };
+
+  const action = async (id, type) => {
+    try {
+      if (type === "delete" && !window.confirm("Cancel this campaign?")) return;
+      await (type === "delete" ? api.delete(`/message-campaigns/${id}`) : api.post(`/message-campaigns/${id}/${type}`));
+      toast.success(type === "start" ? "Campaign started" : type === "pause" ? "Campaign paused" : "Campaign cancelled");
+      loadCampaigns();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+  };
+
+  return (
+    <div className="grid xl:grid-cols-[360px_1fr] gap-5">
+      <div className="border border-[#E6E4DD] bg-white rounded-sm p-5 space-y-4">
+        <div><div className="label-caps">New campaign</div><h3 className="font-display font-bold text-xl text-forest mt-1">Email, SMS or WhatsApp</h3></div>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Campaign name" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+        <select value={channel} onChange={(e) => setChannel(e.target.value)} className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest">
+          <option value="whatsapp">WhatsApp</option><option value="sms">SMS</option><option value="email">Email</option>
+        </select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest">
+          <option value="all">All leads</option><option value="dnp">CallerDesk DNP</option><option value="connected">CallerDesk connected</option><option value="busy">CallerDesk busy</option><option value="failed">CallerDesk failed</option>
+        </select>
+        <div className="text-xs text-forest/55">Choose specific leads for an individual campaign, or leave them unselected to use the status filter in bulk.</div>
+        <select multiple value={leadIds} onChange={(e) => setLeadIds(Array.from(e.target.selectedOptions).map((o) => o.value))} className="w-full min-h-40 border border-[#E6E4DD] rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-forest">
+          {leads.map((l) => <option key={l.id} value={l.id}>{l.name} · {l.phone || l.email || "No contact"}</option>)}
+        </select>
+        {channel === "email" && <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />}
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write your message" className="w-full min-h-28 border border-[#E6E4DD] rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-forest" />
+        {channel === "sms" && <div className="text-xs text-clay">SMS will remain pending until an SMS provider is configured.</div>}
+        <button disabled={busy} onClick={create} className="w-full h-10 bg-forest text-white rounded-sm text-sm font-medium hover:bg-forest-soft disabled:opacity-50">{busy ? "Creating..." : "Create campaign"}</button>
+      </div>
+      <div className="space-y-4">
+        {campaigns.map((c) => (
+          <div key={c.id} className="border border-[#E6E4DD] bg-white rounded-sm p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div><div className="font-display font-bold text-forest">{c.name}</div><div className="text-xs text-forest/55 mt-1">{c.channel.toUpperCase()} · {statusLabel(c.status)} · {c.call_status === "all" ? "All leads" : `CallerDesk ${statusLabel(c.call_status)}`}</div></div>
+              <div className="flex gap-1"><button title="Start" onClick={() => action(c.id, "start")} className="p-1.5 border border-[#E6E4DD] rounded-sm"><Play className="h-3.5 w-3.5" /></button><button title="Pause" onClick={() => action(c.id, "pause")} className="p-1.5 border border-[#E6E4DD] rounded-sm"><Pause className="h-3.5 w-3.5" /></button><button title="Cancel" onClick={() => action(c.id, "delete")} className="p-1.5 border border-[#E6E4DD] rounded-sm text-clay"><Trash2 className="h-3.5 w-3.5" /></button></div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mt-4 text-xs text-forest/70"><div>Total <b>{c.total || 0}</b></div><div>Sent <b>{c.sent || 0}</b></div><div>Pending <b>{c.pending || 0}</b></div><div>Failed <b>{c.failed || 0}</b></div></div>
+          </div>
+        ))}
+        {campaigns.length === 0 && <div className="border border-[#E6E4DD] bg-white rounded-sm p-10 text-center text-forest/50">No message campaigns yet.</div>}
+      </div>
+    </div>
+  );
+}
+
 export default function CallerDesk() {
   const params = useParams();
   const nav = useNavigate();
@@ -221,6 +291,7 @@ export default function CallerDesk() {
   const [leads, setLeads] = useState([]);
   const [logs, setLogs] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [messageCampaigns, setMessageCampaigns] = useState([]);
   const [filters, setFilters] = useState({ status: "all", direction: "all", date_from: "", search: "" });
   const activeFeature = useMemo(() => FEATURES.find((f) => f.key === activeKey) || FEATURES[0], [activeKey]);
 
@@ -246,9 +317,13 @@ export default function CallerDesk() {
     const { data } = await api.get("/callerdesk/campaigns");
     setCampaigns(asArray(data));
   };
+  const loadMessageCampaigns = async () => {
+    const { data } = await api.get("/message-campaigns");
+    setMessageCampaigns(asArray(data));
+  };
 
   useEffect(() => {
-    Promise.all([loadDashboard(), loadStatus(), loadLeads(), loadLogs(), loadCampaigns()]).catch((e) => toast.error(formatApiError(e.response?.data?.detail)));
+    Promise.all([loadDashboard(), loadStatus(), loadLeads(), loadLogs(), loadCampaigns(), loadMessageCampaigns()]).catch((e) => toast.error(formatApiError(e.response?.data?.detail)));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -282,6 +357,7 @@ export default function CallerDesk() {
         {activeKey === "dashboard" && <DashboardPanel stats={stats} refresh={loadDashboard} />}
         {activeKey === "dialer" && <DialerPanel leads={leads} reload={() => { loadLogs(); loadDashboard(); }} />}
         {activeKey === "campaigns" && <CampaignsPanel leads={leads} campaigns={campaigns} loadCampaigns={loadCampaigns} />}
+        {activeKey === "message-campaigns" && <MessageCampaignsPanel leads={leads} campaigns={messageCampaigns} loadCampaigns={loadMessageCampaigns} />}
         {activeKey === "logs" && <LogsPanel filters={filters} setFilters={setFilters} logs={logs} loadLogs={loadLogs} />}
         {activeKey === "settings" && (
           <div className="border border-[#E6E4DD] bg-white rounded-sm p-5 text-sm text-forest/70 space-y-2">

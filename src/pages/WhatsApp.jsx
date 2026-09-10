@@ -183,11 +183,20 @@ export default function WhatsApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  // Keep the inbox current when the provider delivers a webhook message.
+  useEffect(() => {
+    const timer = window.setInterval(() => { load().catch(() => {}); }, 5000);
+    return () => window.clearInterval(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!active?.id) return;
-    api.get(`/whatsapp/conversations/${active.id}/messages`)
+    const refresh = () => api.get(`/whatsapp/conversations/${active.id}/messages`)
       .then((r) => setMessages(asArray(r.data)))
       .catch((e) => toast.error(formatApiError(e.response?.data?.detail)));
+    refresh();
+    const timer = window.setInterval(refresh, 3000);
+    return () => window.clearInterval(timer);
   }, [active]);
 
   const fetchQrCode = async () => {
