@@ -4,7 +4,7 @@ import { api, asArray, formatApiError, relTime } from "@/lib/api";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Layers, MessageSquare, PlugZap, RefreshCw, Send, Users,
+  Layers, MessageSquare, PlugZap, RefreshCw, Send, Users, Search, MoreVertical, Paperclip, Smile, CheckCheck, Image as ImageIcon, FileText, Mic, Phone, Video, Star, Archive, UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -160,8 +160,24 @@ export default function WhatsApp() {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrCode, setQrCode] = useState("");
   const [qrBusy, setQrBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [draft, setDraft] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
   const feature = FEATURE_KEYS.has(featureParam) ? featureParam : "dashboard";
   const activeFeature = FEATURES.find((f) => f.key === feature);
+
+  const sendReply = async () => {
+    if (!active?.lead_id || !draft.trim() || replyBusy) return;
+    setReplyBusy(true);
+    try {
+      await api.post("/whatsapp/messages", { lead_id: active.lead_id, text: draft.trim() });
+      setDraft("");
+      const r = await api.get(`/whatsapp/conversations/${active.id}/messages`);
+      setMessages(asArray(r.data));
+      load();
+    } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
+    finally { setReplyBusy(false); }
+  };
 
   const load = async () => {
     const [sr, ar, cr, lr, cpr] = await Promise.all([
@@ -360,48 +376,15 @@ export default function WhatsApp() {
           <div>{featureContent}</div>
         )}
 
-        {(feature === "dashboard" || feature === "single") && <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-          <div className="border border-[#E6E4DD] bg-white rounded-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#E6E4DD] label-caps">Chats</div>
-            <div className="divide-y divide-[#E6E4DD] max-h-[520px] overflow-y-auto">
-              {items.map((c) => (
-                <button key={c.id} onClick={() => setActive(c)} className={`w-full text-left px-4 py-3 hover:bg-bone-alt/40 ${active?.id === c.id ? "bg-bone-alt/60" : ""}`}>
-                  <div className="font-medium text-forest truncate">{c.contact_name || "WhatsApp contact"}</div>
-                  <div className="text-xs text-forest/50 truncate mt-0.5">{c.last_message || c.contact_phone || "No messages yet"}</div>
-                </button>
-              ))}
-              {items.length === 0 && <div className="text-sm text-forest/50 py-12 text-center">No WhatsApp conversations yet.</div>}
-            </div>
-          </div>
-
-          <div className="border border-[#E6E4DD] bg-white rounded-sm min-h-[420px]">
-            {active ? (
-              <>
-                <div className="px-5 py-4 border-b border-[#E6E4DD]">
-                  <div className="font-display font-bold text-xl text-forest">{active.contact_name || "WhatsApp contact"}</div>
-                  <div className="text-xs text-forest/50">{active.contact_phone || "Linked to lead"}</div>
-                </div>
-                <div className="p-5 space-y-3 max-h-[460px] overflow-y-auto">
-                  {messages.map((m) => (
-                    <div key={m.id} className={`flex ${m.direction === "outgoing" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] rounded-sm px-3 py-2 text-sm ${m.direction === "outgoing" ? "bg-forest text-white" : "bg-bone-alt text-forest"}`}>
-                        <div>{m.text}</div>
-                        <div className={`text-[10px] mt-1 ${m.direction === "outgoing" ? "text-white/60" : "text-forest/40"}`}>{relTime(m.created_at)}</div>
-                      </div>
-                    </div>
-                  ))}
-                  {messages.length === 0 && <div className="text-sm text-forest/50 text-center py-20">No messages in this conversation.</div>}
-                </div>
-              </>
-            ) : (
-              <div className="h-full min-h-[420px] grid place-items-center text-forest/50">
-                <div className="text-center">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-60" />
-                  Select a conversation
-                </div>
-              </div>
-            )}
-          </div>
+        {(feature === "dashboard" || feature === "single") && <div className="grid grid-cols-1 xl:grid-cols-[290px_minmax(0,1fr)_240px] border border-[#DDE6E0] bg-white rounded-sm overflow-hidden min-h-[650px]">
+          <aside className="border-r border-[#DDE6E0] min-w-0">
+            <div className="p-3 border-b border-[#DDE6E0] bg-[#F7FAF8]"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-forest/40" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations" className="w-full h-9 rounded-sm border border-[#DDE6E0] bg-white pl-9 pr-3 text-sm focus:outline-none focus:border-forest" /></div><div className="flex items-center justify-between mt-3"><span className="label-caps">Inbox</span><span className="text-xs text-forest/50">{items.length} chats</span></div></div>
+            <div className="divide-y divide-[#E8EEE9] max-h-[590px] overflow-y-auto">{items.filter((c) => `${c.contact_name || ""} ${c.contact_phone || ""}`.toLowerCase().includes(search.toLowerCase())).map((c) => <button key={c.id} onClick={() => setActive(c)} className={`w-full text-left p-3 flex gap-3 hover:bg-[#F3F8F4] ${active?.id === c.id ? "bg-[#E8F4EC] border-l-2 border-[#18A66A]" : ""}`}><div className="h-10 w-10 rounded-full bg-[#D8F3E3] text-[#16864B] grid place-items-center font-bold shrink-0">{(c.contact_name || "W").slice(0, 1).toUpperCase()}</div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><span className="font-semibold text-sm text-forest truncate">{c.contact_name || "WhatsApp contact"}</span><span className="text-[10px] text-forest/40">{relTime(c.last_message_at || c.updated_at)}</span></div><div className="text-xs text-forest/55 truncate mt-1">{c.last_message || c.contact_phone || "No messages yet"}</div><div className="flex items-center gap-2 mt-1"><span className="text-[10px] text-forest/40">{c.contact_phone || ""}</span>{c.unread_count > 0 && <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-[#18A66A] text-white text-[10px] grid place-items-center">{c.unread_count}</span>}</div></div></button>)}{items.length === 0 && <div className="text-sm text-forest/50 py-12 text-center px-4">No WhatsApp conversations yet.</div>}</div>
+          </aside>
+          <section className="min-w-0 flex flex-col bg-[#F7FAF8]">
+            {active ? <><header className="h-[68px] px-4 border-b border-[#DDE6E0] bg-white flex items-center justify-between"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-full bg-[#D8F3E3] text-[#16864B] grid place-items-center font-bold">{(active.contact_name || "W").slice(0, 1).toUpperCase()}</div><div><div className="font-semibold text-forest">{active.contact_name || "WhatsApp contact"}</div><div className="text-xs text-forest/50">{active.contact_phone || "WhatsApp contact"}</div></div></div><div className="flex items-center gap-1 text-forest/50"><button title="Search messages" className="h-8 w-8 grid place-items-center hover:bg-bone-alt rounded-sm"><Search className="h-4 w-4" /></button><button title="More actions" className="h-8 w-8 grid place-items-center hover:bg-bone-alt rounded-sm"><MoreVertical className="h-4 w-4" /></button></div></header><div className="flex-1 p-5 space-y-2 overflow-y-auto" style={{ backgroundImage: "radial-gradient(#DDE6E0 0.7px, transparent 0.7px)", backgroundSize: "14px 14px" }}>{messages.map((m) => { const outgoing = m.direction === "outgoing"; const media = m.media_url || m.provider_response?.media_url; const type = m.message_type || m.type; return <div key={m.id} className={`flex ${outgoing ? "justify-end" : "justify-start"}`}><div className={`max-w-[78%] px-3 py-2 rounded-lg shadow-sm ${outgoing ? "bg-[#D9FDD3] text-[#173B25] rounded-tr-sm" : "bg-white text-forest rounded-tl-sm"}`}>{media && type === "image" ? <img src={media} alt="WhatsApp attachment" className="max-h-56 max-w-full rounded-md mb-1 object-contain" /> : media ? <a href={media} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm underline"><FileText className="h-4 w-4" /> Open attachment</a> : null}{m.text && <div className="text-sm whitespace-pre-wrap">{m.text}</div>}<div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-forest/45">{new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{outgoing && <CheckCheck className="h-3 w-3 text-[#16864B]" />}</div></div></div>})}{messages.length === 0 && <div className="text-center text-sm text-forest/45 py-24">No messages in this conversation.</div>}</div><div className="px-3 py-3 border-t border-[#DDE6E0] bg-white"><div className="flex items-end gap-2"><button title="Attach file" className="h-10 w-10 grid place-items-center text-forest/55 hover:bg-bone-alt rounded-full"><Paperclip className="h-5 w-5" /></button><button title="Add emoji" className="h-10 w-10 grid place-items-center text-forest/55 hover:bg-bone-alt rounded-full"><Smile className="h-5 w-5" /></button><textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }} rows={1} placeholder="Type a message" className="flex-1 max-h-28 min-h-10 resize-none rounded-full border border-[#DDE6E0] px-4 py-2.5 text-sm focus:outline-none focus:border-[#18A66A]" /><button title="Send message" onClick={sendReply} disabled={replyBusy || !draft.trim()} className="h-10 w-10 rounded-full bg-[#18A66A] text-white grid place-items-center disabled:opacity-50"><Send className="h-4 w-4" /></button></div></div></> : <div className="flex-1 grid place-items-center text-forest/45"><div className="text-center"><MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />Select a conversation to start chatting</div></div>}
+          </section>
+          <aside className="border-l border-[#DDE6E0] bg-white p-4 hidden xl:block">{active ? <><div className="flex flex-col items-center text-center py-4 border-b border-[#E8EEE9]"><div className="h-16 w-16 rounded-full bg-[#D8F3E3] text-[#16864B] grid place-items-center text-2xl font-bold">{(active.contact_name || "W").slice(0, 1).toUpperCase()}</div><div className="font-semibold text-forest mt-3">{active.contact_name || "WhatsApp contact"}</div><div className="text-xs text-forest/50 mt-1">{active.contact_phone || "No phone number"}</div></div><div className="py-4 space-y-3"><div className="label-caps">Conversation</div><div className="flex items-center gap-2 text-sm text-forest/70"><UserRound className="h-4 w-4" /> {active.lead_id ? "Linked CRM lead" : "Unassigned contact"}</div><div className="flex items-center gap-2 text-sm text-forest/70"><Archive className="h-4 w-4" /> {messages.length} messages</div><div className="flex items-center gap-2 text-sm text-forest/70"><Star className="h-4 w-4" /> {active.unread_count || 0} unread</div></div></> : <div className="text-sm text-forest/45 text-center py-10">Contact details appear here</div>}</aside>
         </div>}
       </main>
     </div>
