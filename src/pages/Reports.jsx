@@ -1,91 +1,35 @@
-import React, { useEffect, useState } from "react";
-import { api, asArray, SOURCE_LABEL } from "@/lib/api";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import React, { useEffect, useMemo, useState } from "react";
+import { api, asArray, formatApiError, SOURCE_LABEL, STAGE_LABEL } from "@/lib/api";
+import { Download, Filter, RefreshCcw } from "lucide-react";
+import { toast } from "sonner";
+
+const today = new Date();
+const monthAgo = new Date(today.getTime() - 30 * 86400000);
+const isoDate = (d) => d.toISOString().slice(0, 10);
+const initialFilters = { start: isoDate(monthAgo), end: isoDate(today), date_field: "created", stage: "all", source: "all", assigned_to: "all" };
+
+function downloadCsv(name, rows) {
+  if (!rows.length) return toast.error("There is no data to export for this period.");
+  const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const escape = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+  const csv = [keys.join(","), ...rows.map((row) => keys.map((key) => escape(Array.isArray(row[key]) ? row[key].join(" | ") : row[key])).join(","))].join("\n");
+  const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); link.download = `${name}-${isoDate(new Date())}.csv`; link.click(); URL.revokeObjectURL(link.href);
+}
+
+function Metric({ label, value, sub }) { return <div className="border border-[#E6E4DD] bg-white rounded-sm p-4"><div className="label-caps">{label}</div><div className="font-display font-black text-2xl text-forest mt-2 tabular-nums">{value ?? 0}</div>{sub && <div className="text-xs text-forest/50 mt-1">{sub}</div>}</div>; }
+
+function Filters({ value, onChange, onApply, users }) {
+  const set = (key, next) => onChange({ ...value, [key]: next });
+  return <div className="border border-[#E6E4DD] bg-white rounded-sm p-4 space-y-4"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-forest font-medium"><Filter className="h-4 w-4" /> Report filters</div><button onClick={onApply} className="h-9 px-3 bg-forest text-white rounded-sm text-sm inline-flex items-center gap-2"><RefreshCcw className="h-4 w-4" /> Apply</button></div><div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3"><label className="text-xs text-forest/60">From<input type="date" value={value.start} onChange={(e) => set("start", e.target.value)} className="mt-1 w-full h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm text-forest" /></label><label className="text-xs text-forest/60">To<input type="date" value={value.end} onChange={(e) => set("end", e.target.value)} className="mt-1 w-full h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm text-forest" /></label><label className="text-xs text-forest/60">Date uses<select value={value.date_field} onChange={(e) => set("date_field", e.target.value)} className="mt-1 w-full h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm text-forest"><option value="created">Created date</option><option value="updated">Updated date</option></select></label><label className="text-xs text-forest/60">Stage<select value={value.stage} onChange={(e) => set("stage", e.target.value)} className="mt-1 w-full h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm text-forest"><option value="all">All stages</option>{Object.entries(STAGE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label className="text-xs text-forest/60">Source<select value={value.source} onChange={(e) => set("source", e.target.value)} className="mt-1 w-full h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm text-forest"><option value="all">All sources</option>{Object.entries(SOURCE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label className="text-xs text-forest/60">User<select value={value.assigned_to} onChange={(e) => set("assigned_to", e.target.value)} className="mt-1 w-full h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm text-forest"><option value="all">All users</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label></div></div>;
+}
+
+function Table({ columns, rows }) { return <div className="border border-[#E6E4DD] bg-white rounded-sm overflow-auto"><table className="w-full text-sm"><thead className="bg-bone-alt/60 border-b border-[#E6E4DD]"><tr>{columns.map((c) => <th key={c.key} className="text-left px-3 py-3 text-[10px] uppercase tracking-[0.12em] text-forest/60 whitespace-nowrap">{c.label}</th>)}</tr></thead><tbody className="divide-y divide-[#E6E4DD]">{rows.map((row, i) => <tr key={row.id || row.user_id || row.date || i} className="hover:bg-bone-alt/30">{columns.map((c) => <td key={c.key} className="px-3 py-3 text-forest whitespace-nowrap">{c.render ? c.render(row[c.key], row) : row[c.key] ?? "—"}</td>)}</tr>)}{!rows.length && <tr><td colSpan={columns.length} className="px-4 py-10 text-center text-forest/50">No records found.</td></tr>}</tbody></table></div>; }
 
 export default function Reports() {
-  const [execs, setExecs] = useState([]);
-  const [sources, setSources] = useState([]);
-  useEffect(() => {
-    api.get("/reports/executives").then((r) => setExecs(asArray(r.data)));
-    api.get("/reports/sources").then((r) => setSources(asArray(r.data)));
-  }, []);
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <div className="label-caps">Console</div>
-        <h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">Reports</h2>
-        <div className="text-sm text-forest/60 mt-1">Executive scorecard and lead-source performance.</div>
-      </div>
-
-      <div className="border border-[#E6E4DD] bg-white rounded-sm p-6">
-        <div className="label-caps">Executive scorecard</div>
-        <h3 className="font-display font-bold text-xl text-forest tracking-tight mt-1 mb-5">By conversion rate</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {execs.map((e) => (
-            <div key={e.id} className="border border-[#E6E4DD] rounded-sm p-4">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-sm bg-forest text-white grid place-items-center text-sm font-display font-bold">{e.name.slice(0, 1)}</div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-forest truncate">{e.name}</div>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-                <div><div className="font-display font-bold text-lg text-forest tabular-nums">{e.leads}</div><div className="label-caps">Leads</div></div>
-                <div><div className="font-display font-bold text-lg text-forest tabular-nums">{e.booked}</div><div className="label-caps">Booked</div></div>
-                <div><div className="font-display font-bold text-lg text-forest tabular-nums">{e.site_visits}</div><div className="label-caps">Visits</div></div>
-                <div><div className="font-display font-bold text-lg text-forest tabular-nums">{e.pending_followups}</div><div className="label-caps">Pending</div></div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-[#E6E4DD] flex items-center justify-between">
-                <div className="label-caps">Conversion</div>
-                <div className="font-display font-bold text-forest tabular-nums">{e.conversion}%</div>
-              </div>
-            </div>
-          ))}
-          {execs.length === 0 && <div className="col-span-full text-center text-forest/50 text-sm py-6">Add executives to see their scorecard.</div>}
-        </div>
-      </div>
-
-      <div className="border border-[#E6E4DD] bg-white rounded-sm p-6">
-        <div className="label-caps">Lead-source performance</div>
-        <h3 className="font-display font-bold text-xl text-forest tracking-tight mt-1 mb-5">Volume vs conversion</h3>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-            <BarChart data={sources} margin={{ left: 4, right: 8, top: 4, bottom: 4 }}>
-              <CartesianGrid stroke="#E6E4DD" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="source" tick={{ fontSize: 11, fill: "#5C6661" }} tickFormatter={(v) => SOURCE_LABEL[v] || v} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#5C6661" }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={{ border: "1px solid #E6E4DD", borderRadius: 4, fontSize: 12 }} formatter={(v, n, item) => n === "total" ? [`${v} leads`, "Total"] : [v, n]} labelFormatter={(v) => SOURCE_LABEL[v] || v} />
-              <Bar dataKey="total" radius={[3, 3, 0, 0]}>
-                {sources.map((s, i) => (<Cell key={i} fill="#102A20" />))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="mt-6 border border-[#E6E4DD] rounded-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-bone-alt/60 border-b border-[#E6E4DD]">
-              <tr className="text-[10px] uppercase tracking-[0.15em] text-forest/70">
-                <th className="text-left px-4 py-3 font-bold">Source</th>
-                <th className="text-left px-4 py-3 font-bold">Total leads</th>
-                <th className="text-left px-4 py-3 font-bold">Booked</th>
-                <th className="text-left px-4 py-3 font-bold">Conversion</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E6E4DD]">
-              {sources.map((s) => (
-                <tr key={s.source} className="hover:bg-bone-alt/30 transition-colors duration-100">
-                  <td className="px-4 py-3 font-medium text-forest">{SOURCE_LABEL[s.source] || s.source}</td>
-                  <td className="px-4 py-3 tabular-nums">{s.total}</td>
-                  <td className="px-4 py-3 tabular-nums">{s.booked}</td>
-                  <td className="px-4 py-3 tabular-nums font-medium">{s.conversion}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+  const [filters, setFilters] = useState(initialFilters); const [users, setUsers] = useState([]); const [summary, setSummary] = useState(null); const [activity, setActivity] = useState([]); const [daily, setDaily] = useState([]); const [statusRows, setStatusRows] = useState([]); const [notInterested, setNotInterested] = useState([]); const [busy, setBusy] = useState(false);
+  const params = useMemo(() => ({ ...filters, ...(filters.stage === "all" ? { stage: undefined } : {}), ...(filters.source === "all" ? { source: undefined } : {}), ...(filters.assigned_to === "all" ? { assigned_to: undefined } : {}) }), [filters]);
+  const load = async () => { if (!filters.start || !filters.end) return toast.error("Select a date range first."); setBusy(true); try { const [s, a, d, u, n, people] = await Promise.all([api.get("/reports/summary", { params }), api.get("/reports/activity", { params }), api.get("/reports/daily", { params }), api.get("/reports/user-status", { params }), api.get("/reports/not-interested", { params: { start: filters.start, end: filters.end, date_field: filters.date_field } }), api.get("/users")]); setSummary(s.data); setActivity(asArray(a.data)); setDaily(asArray(d.data)); setStatusRows(asArray(u.data)); setNotInterested(asArray(n.data)); setUsers(asArray(people.data)); } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); } finally { setBusy(false); } };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const metric = summary?.activity || {}; const stageColumns = Object.keys(STAGE_LABEL).map((key) => ({ key, label: STAGE_LABEL[key] })); const statusColumns = [{ key: "user", label: "User" }, ...stageColumns]; const activityColumns = [{ key: "user", label: "User" }, { key: "outgoing_calls", label: "Outgoing calls" }, { key: "answered", label: "Answered" }, { key: "missed", label: "Missed" }, { key: "unique_contacts", label: "Unique contacts" }, { key: "avg_duration_sec", label: "Avg duration (s)" }, { key: "sms_sent", label: "SMS" }, { key: "emails_sent", label: "Email" }, { key: "followups", label: "Follow-ups" }]; const dailyColumns = [{ key: "date", label: "Date" }, { key: "email_sent", label: "Email sent" }, { key: "outgoing_calls", label: "Outgoing calls" }, { key: "sms_sent", label: "SMS sent" }, { key: "followups", label: "Follow-ups" }]; const lostColumns = [{ key: "name", label: "Lead" }, { key: "phone", label: "Phone" }, { key: "source", label: "Source", render: (v) => SOURCE_LABEL[v] || v }, { key: "stage", label: "Stage", render: (v) => STAGE_LABEL[v] || v }, { key: "reason", label: "Reason" }, { key: "updated_at", label: "Updated", render: (v) => v ? new Date(v).toLocaleDateString() : "—" }];
+  return <div className="space-y-6"><div className="flex items-start justify-between gap-4"><div><div className="label-caps">Console</div><h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">Reports</h2><div className="text-sm text-forest/60 mt-1">Lead sources, user activity, status movement and outreach telemetry.</div></div><button onClick={() => downloadCsv("activity-report", activity)} className="h-9 px-3 border border-[#E6E4DD] bg-white rounded-sm text-sm inline-flex items-center gap-2"><Download className="h-4 w-4" /> Export CSV</button></div><Filters value={filters} onChange={setFilters} onApply={load} users={users} />{busy ? <div className="py-12 text-center text-forest/50">Loading report data…</div> : <><div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3"><Metric label="Leads" value={summary?.totals?.leads} /><Metric label="Starred" value={summary?.totals?.stars} /><Metric label="Outgoing calls" value={metric.outgoing_calls} /><Metric label="Answered" value={metric.outgoing_answered} /><Metric label="Missed" value={metric.outgoing_missed} /><Metric label="SMS sent" value={metric.sms_sent} /><Metric label="Emails sent" value={metric.emails_sent} /><Metric label="Follow-ups" value={metric.followups} sub={`${metric.followups_dismissed || 0} dismissed`} /></div><section><div className="flex items-end justify-between mb-3"><div><div className="label-caps">User-wise report</div><h3 className="font-display font-bold text-xl text-forest mt-1">Outreach activity</h3></div><button onClick={() => downloadCsv("user-activity", activity)} className="text-xs text-forest inline-flex items-center gap-1"><Download className="h-3.5 w-3.5" /> CSV</button></div><Table columns={activityColumns} rows={activity} /></section><section><div className="flex items-end justify-between mb-3"><div><div className="label-caps">Daily report</div><h3 className="font-display font-bold text-xl text-forest mt-1">Outreach telemetry</h3></div><button onClick={() => downloadCsv("daily-report", daily)} className="text-xs text-forest inline-flex items-center gap-1"><Download className="h-3.5 w-3.5" /> CSV</button></div><Table columns={dailyColumns} rows={daily} /></section><section><div className="label-caps mb-1">User vs status details</div><h3 className="font-display font-bold text-xl text-forest mb-3">Pipeline status by owner</h3><Table columns={statusColumns} rows={statusRows} /></section><section><div className="flex items-end justify-between mb-3"><div><div className="label-caps">Not interested report</div><h3 className="font-display font-bold text-xl text-forest mt-1">Lost and reason details</h3></div><button onClick={() => downloadCsv("not-interested", notInterested)} className="text-xs text-forest inline-flex items-center gap-1"><Download className="h-3.5 w-3.5" /> CSV</button></div><Table columns={lostColumns} rows={notInterested} /></section></>}</div>;
 }

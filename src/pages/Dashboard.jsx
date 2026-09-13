@@ -421,7 +421,7 @@ import {
 import StarRating from "@/components/StarRating";
 import AdminEODSummary from "@/components/AdminEODSummary";
 import {
-  TrendingUp, CalendarCheck2, BellRing, Users2, Phone, PhoneMissed,
+  TrendingUp, CalendarCheck2, BellRing, Users2, Phone, PhoneMissed, MessageSquare, Mail, RefreshCcw,
   CalendarPlus, ListTodo, ArrowUpRight, Sparkles, Building2,
 } from "lucide-react";
 
@@ -844,10 +844,24 @@ function LeadListPanel({ title, items, empty }) {
   );
 }
 
+function OutreachTelemetry() {
+  const [summary, setSummary] = useState(null);
+  const [start, setStart] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+  const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const load = () => api.get("/reports/summary", { params: { start, end } }).then((r) => setSummary(r.data)).catch(() => {});
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const a = summary?.activity || {};
+  return <section className="mt-6 border border-[#E6E4DD] bg-white rounded-sm p-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="label-caps">Team activity · selected period</div><h3 className="font-display font-bold text-xl text-forest mt-1">Outreach telemetry</h3></div><div className="flex items-end gap-2"><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">From<input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="block mt-1 h-8 border border-[#E6E4DD] rounded-sm px-2 text-xs" /></label><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">To<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="block mt-1 h-8 border border-[#E6E4DD] rounded-sm px-2 text-xs" /></label><button onClick={load} title="Refresh telemetry" className="h-8 w-8 border border-[#E6E4DD] rounded-sm grid place-items-center"><RefreshCcw className="h-3.5 w-3.5" /></button></div></div>
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-5"><Kpi label="Outgoing calls" value={a.outgoing_calls} icon={Phone} tone="green" /><Kpi label="Answered" value={a.outgoing_answered} icon={Phone} tone="green" /><Kpi label="Missed" value={a.outgoing_missed} icon={PhoneMissed} tone="clay" /><Kpi label="Unique contacts" value={a.unique_outgoing} icon={Users2} tone="wheat" /><Kpi label="Incoming" value={a.incoming_calls} icon={Phone} tone="green" /><Kpi label="SMS sent" value={a.sms_sent} icon={MessageSquare} tone="green" /><Kpi label="Email sent" value={a.emails_sent} icon={Mail} tone="green" /><Kpi label="Follow-ups" value={a.followups} icon={BellRing} tone="wheat" /></div>
+  </section>;
+}
+
 export default function Dashboard() {
   const [tab, setTab] = useState("month");
   return (
     <div className="space-y-6">
+      <OutreachTelemetry />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="rounded-sm border border-[#E6E4DD] bg-white p-1 h-auto">
           <TabsTrigger data-testid={DASH.tabMonth} value="month" className="rounded-sm data-[state=active]:bg-forest data-[state=active]:text-white text-forest px-4 py-1.5 text-xs uppercase tracking-[0.18em] font-bold">Month's Updates</TabsTrigger>
