@@ -356,6 +356,7 @@ export default function LeadDetail() {
   const [fuKind, setFuKind] = useState("call");
   const [fuOpen, setFuOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
+  const [coAssignees, setCoAssignees] = useState([]);
 
   const load = async () => {
     try {
@@ -369,6 +370,7 @@ export default function LeadDetail() {
       setUsers(asArray(u.data));
       setProjects(asArray(p.data));
       setActivities(asArray(a.data));
+      setCoAssignees(l.data.co_assigned_to || []);
       setVisitProjectId(l.data.project_id || "");
       if (user?.role === "admin") {
         api.get("/whatsapp-templates")
@@ -390,16 +392,28 @@ export default function LeadDetail() {
 
   const owner = users.find((u) => u.id === lead.assigned_to);
   const project = projects.find((p) => p.id === lead.project_id);
-  const canModifyLead = user?.role === "admin";
+  const canModifyLead = user?.role === "admin" || user?.role === "manager";
 
   const changeStage = async (newStage) => {
-    await api.post(`/leads/${leadId}/stage`, { stage: newStage });
+    const note = newStage === "lost" ? window.prompt("Add a reason for marking this lead as lost:") : "";
+    if (newStage === "lost" && note === null) return;
+    await api.post(`/leads/${leadId}/stage`, { stage: newStage, ...(note ? { note } : {}) });
     toast.success(`Stage → ${STAGE_LABEL[newStage]}`);
     load();
   };
   const reassign = async (userId) => {
     await api.post(`/leads/${leadId}/assign`, { user_id: userId });
     toast.success("Reassigned"); load();
+  };
+  const saveCoAssignees = async (values) => {
+    setCoAssignees(values);
+    try {
+      await api.post(`/leads/${leadId}/co-assign`, { user_ids: values });
+      toast.success("Co-assignees updated");
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail));
+      load();
+    }
   };
   const addNote = async () => {
     if (!note.trim()) return;
@@ -627,6 +641,21 @@ export default function LeadDetail() {
                 </SelectContent>
               </Select>
             )}
+            <div className="pt-3 mt-3 border-t border-[#E6E4DD]">
+              <div className="label-caps mb-1.5">Co-assign</div>
+              <select
+                multiple
+                value={coAssignees}
+                disabled={!canModifyLead}
+                onChange={(e) => saveCoAssignees(Array.from(e.target.selectedOptions).map((o) => o.value))}
+                className="w-full min-h-20 border border-[#E6E4DD] rounded-sm px-2 py-1.5 text-xs text-forest disabled:opacity-60"
+              >
+                {users.filter((u) => u.id !== lead.assigned_to && (u.role === "executive" || u.role === "sales" || u.role === "manager")).map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+              <div className="text-[11px] text-forest/45 mt-1">Hold Ctrl/Cmd to select more than one co-owner.</div>
+            </div>
           </div>
 
           <div className="border border-[#E6E4DD] bg-white rounded-sm p-6 space-y-3">

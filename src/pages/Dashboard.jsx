@@ -543,12 +543,14 @@ function MonthlyTab() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [revOpen, setRevOpen] = useState(false);
+  const [dateFrom, setDateFrom] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   useEffect(() => {
     setError("");
-    api.get("/dashboard/monthly")
+    api.get("/dashboard/monthly", { params: { date_from: dateFrom, date_to: dateTo } })
       .then((r) => setData(r.data || {}))
       .catch((e) => setError(formatApiError(e.response?.data?.detail) || e.message));
-  }, []);
+  }, [dateFrom, dateTo]);
   
   if (error) return <div className="text-clay text-sm">Dashboard failed to load: {error}</div>;
   // ADDED: !data.period check to prevent crashes on undefined data
@@ -572,6 +574,7 @@ function MonthlyTab() {
           </div>
           <div className="text-sm text-forest/60 mt-1">Your current month's highlights · {period}</div>
         </div>
+        <div className="flex items-end gap-2"><label className="label-caps">From<input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block mt-1 h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm font-normal" /></label><label className="label-caps">To<input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block mt-1 h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm font-normal" /></label></div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -718,12 +721,14 @@ function ActionItemsTab() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   useEffect(() => {
     setError("");
-    api.get("/dashboard/action-items")
+    api.get("/dashboard/action-items", { params: { date_from: dateFrom, date_to: dateTo } })
       .then((r) => setData({ widgets: {}, ...(r.data || {}) }))
       .catch((e) => setError(formatApiError(e.response?.data?.detail) || e.message));
-  }, []);
+  }, [dateFrom, dateTo]);
   
   if (error) return <div className="text-clay text-sm">Action items failed to load: {error}</div>;
   // ADDED: !data.widgets check to prevent crashes on undefined data
@@ -739,9 +744,9 @@ function ActionItemsTab() {
   return (
     <div className="space-y-6">
       {user?.role === "admin" && <AdminEODSummary mode="card" />}
-      <div className="flex items-baseline gap-3">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
         <div className="label-caps">Overview</div>
-        <div className="text-sm text-forest/60">· {today} · 12:00 AM – 11:59 PM</div>
+        <div className="flex items-end gap-2"><label className="label-caps">From<input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block mt-1 h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm font-normal" /></label><label className="label-caps">To<input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block mt-1 h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm font-normal" /></label><div className="text-sm text-forest/60 pb-2">{today}</div></div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -846,13 +851,16 @@ function LeadListPanel({ title, items, empty }) {
 
 function OutreachTelemetry() {
   const [summary, setSummary] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [assignedTo, setAssignedTo] = useState("");
   const [start, setStart] = useState(() => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10));
-  const load = () => api.get("/reports/summary", { params: { start, end } }).then((r) => setSummary(r.data)).catch(() => {});
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const load = () => api.get("/reports/summary", { params: { start, end, ...(assignedTo ? { assigned_to: assignedTo } : {}) } }).then((r) => setSummary(r.data)).catch(() => {});
+  useEffect(() => { api.get("/users").then((r) => setUsers(asArray(r.data))).catch(() => {}); }, []);
+  useEffect(() => { load(); }, [start, end, assignedTo]); // eslint-disable-line react-hooks/exhaustive-deps
   const a = summary?.activity || {};
   return <section className="mt-6 border border-[#E6E4DD] bg-white rounded-sm p-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="label-caps">Team activity · selected period</div><h3 className="font-display font-bold text-xl text-forest mt-1">Outreach telemetry</h3></div><div className="flex items-end gap-2"><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">From<input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="block mt-1 h-8 border border-[#E6E4DD] rounded-sm px-2 text-xs" /></label><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">To<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="block mt-1 h-8 border border-[#E6E4DD] rounded-sm px-2 text-xs" /></label><button onClick={load} title="Refresh telemetry" className="h-8 w-8 border border-[#E6E4DD] rounded-sm grid place-items-center"><RefreshCcw className="h-3.5 w-3.5" /></button></div></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><div className="label-caps">Team activity · selected period</div><h3 className="font-display font-bold text-xl text-forest mt-1">Call Report</h3></div><div className="flex flex-wrap items-end gap-2"><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">From<input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="block mt-1 h-8 border border-[#E6E4DD] rounded-sm px-2 text-xs" /></label><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">To<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="block mt-1 h-8 border border-[#E6E4DD] rounded-sm px-2 text-xs" /></label><label className="text-[10px] uppercase tracking-[0.14em] text-forest/50">User<select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="block mt-1 h-8 min-w-28 border border-[#E6E4DD] rounded-sm px-2 text-xs normal-case tracking-normal"><option value="">All users</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label><button onClick={load} title="Refresh Call Report" className="h-8 w-8 border border-[#E6E4DD] rounded-sm grid place-items-center"><RefreshCcw className="h-3.5 w-3.5" /></button></div></div>
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-5"><Kpi label="Outgoing calls" value={a.outgoing_calls} icon={Phone} tone="green" /><Kpi label="Answered" value={a.outgoing_answered} icon={Phone} tone="green" /><Kpi label="Missed" value={a.outgoing_missed} icon={PhoneMissed} tone="clay" /><Kpi label="Unique contacts" value={a.unique_outgoing} icon={Users2} tone="wheat" /><Kpi label="Incoming" value={a.incoming_calls} icon={Phone} tone="green" /><Kpi label="SMS sent" value={a.sms_sent} icon={MessageSquare} tone="green" /><Kpi label="Email sent" value={a.emails_sent} icon={Mail} tone="green" /><Kpi label="Follow-ups" value={a.followups} icon={BellRing} tone="wheat" /></div>
   </section>;
 }

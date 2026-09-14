@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, asArray, formatApiError, relTime } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, ListFilter, Megaphone, PhoneCall, PhoneOutgoing, Play, Pause, Trash2, RefreshCcw, Search, Settings, Mail, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,7 +50,8 @@ function FilterBar({ filters, setFilters, showDirection = true }) {
           </SelectContent>
         </Select>
       )}
-      <input type="date" value={filters.date_from} onChange={(e) => setFilters({ ...filters, date_from: e.target.value })} className="h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+      <input type="date" value={filters.date_from} onChange={(e) => setFilters({ ...filters, date_from: e.target.value })} className="h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" aria-label="Date from" />
+      <input type="date" value={filters.date_to || ""} onChange={(e) => setFilters({ ...filters, date_to: e.target.value })} className="h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" aria-label="Date to" />
       <div className="relative">
         <Search className="h-4 w-4 text-forest/35 absolute left-3 top-3" />
         <input value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} placeholder="Phone / Call SID" className="w-full h-10 border border-[#E6E4DD] rounded-sm pl-9 pr-3 text-sm focus:outline-none focus:border-forest" />
@@ -137,7 +139,8 @@ function CampaignsPanel({ leads, campaigns, loadCampaigns }) {
   const [leadIds, setLeadIds] = useState([]);
   const [activeId, setActiveId] = useState("");
   const [calls, setCalls] = useState([]);
-  const [filters, setFilters] = useState({ status: "all", direction: "all", date_from: "", search: "" });
+  const [selectedCall, setSelectedCall] = useState(null);
+  const [filters, setFilters] = useState({ status: "all", direction: "all", date_from: "", date_to: "", search: "" });
   const active = campaigns.find((c) => c.id === activeId) || campaigns[0];
 
   const create = async () => {
@@ -166,7 +169,7 @@ function CampaignsPanel({ leads, campaigns, loadCampaigns }) {
   };
   const loadCalls = async (id = active?.id) => {
     if (!id) return;
-    const { data } = await api.get(`/callerdesk/campaigns/${id}/calls`, { params: { status: filters.status, search: filters.search } });
+    const { data } = await api.get(`/callerdesk/campaigns/${id}/calls`, { params: { status: filters.status, search: filters.search, date_from: filters.date_from, date_to: filters.date_to } });
     setCalls(asArray(data));
   };
   useEffect(() => { if (active?.id) loadCalls(active.id); }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -205,9 +208,23 @@ function CampaignsPanel({ leads, campaigns, loadCampaigns }) {
         <FilterBar filters={filters} setFilters={setFilters} showDirection={false} />
         <div className="flex justify-end"><button onClick={() => loadCalls()} className="h-9 px-3 border border-[#E6E4DD] rounded-sm text-sm inline-flex items-center gap-2 hover:border-forest"><RefreshCcw className="h-4 w-4" /> Apply</button></div>
         <div className="border border-[#E6E4DD] bg-white rounded-sm divide-y divide-[#E6E4DD]">
-          {calls.map((c) => <div key={c.id} className="p-3 text-sm flex justify-between gap-4"><span>{c.lead_name || c.phone}</span><span className="font-bold">{statusLabel(c.status)}</span><span className="font-mono text-xs">{c.call_sid || "—"}</span></div>)}
+          {calls.map((c) => <button key={c.id} onClick={() => setSelectedCall(c)} className="w-full p-3 text-sm flex justify-between gap-4 text-left hover:bg-bone-alt/60 transition-colors"><span>{c.lead_name || c.phone}</span><span className={`font-bold ${c.status === "connected" ? "text-emerald-700" : "text-forest"}`}>{statusLabel(c.status)}</span><span className="font-mono text-xs">{c.call_sid || "—"}</span></button>)}
           {calls.length === 0 && <div className="p-8 text-center text-forest/50 text-sm">No campaign calls selected.</div>}
         </div>
+        <Dialog open={Boolean(selectedCall)} onOpenChange={(open) => !open && setSelectedCall(null)}>
+          <DialogContent className="rounded-sm max-w-md">
+            <DialogHeader><DialogTitle className="font-display text-2xl">Call outcome</DialogTitle></DialogHeader>
+            {selectedCall && <div className="space-y-3 text-sm text-forest">
+              <div className={`border rounded-sm p-4 ${selectedCall.status === "connected" ? "border-emerald-200 bg-emerald-50" : "border-[#E6E4DD] bg-bone-alt/40"}`}>
+                <div className="label-caps mb-1">{statusLabel(selectedCall.status)}</div>
+                <div className="font-display text-xl font-bold">{selectedCall.lead_name || selectedCall.phone}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3"><div><div className="label-caps">Phone</div><div>{selectedCall.phone || "—"}</div></div><div><div className="label-caps">Duration</div><div>{selectedCall.duration_sec || 0}s</div></div></div>
+              <div><div className="label-caps">Call reference</div><div className="font-mono text-xs break-all">{selectedCall.call_sid || "Not available"}</div></div>
+              {selectedCall.status === "connected" && <div className="text-xs text-emerald-800">Connected calls are highlighted here so the agent can record the next action immediately.</div>}
+            </div>}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
@@ -310,11 +327,12 @@ export default function CallerDesk() {
   const loadLogs = async () => {
     const params = { status: filters.status, direction: filters.direction, search: filters.search };
     if (filters.date_from) params.date_from = new Date(filters.date_from).toISOString();
+    if (filters.date_to) params.date_to = new Date(`${filters.date_to}T23:59:59.999Z`).toISOString();
     const { data } = await api.get("/callerdesk/call-logs", { params });
     setLogs(asArray(data));
   };
   const loadCampaigns = async () => {
-    const { data } = await api.get("/callerdesk/campaigns");
+    const { data } = await api.get("/callerdesk/campaigns", { params: { status: filters.status, date_from: filters.date_from, date_to: filters.date_to, search: filters.search } });
     setCampaigns(asArray(data));
   };
   const loadMessageCampaigns = async () => {

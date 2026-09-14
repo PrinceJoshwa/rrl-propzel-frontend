@@ -12,17 +12,19 @@ export default function FollowUps() {
   const [items, setItems] = useState([]);
   const [leads, setLeads] = useState([]);
   const [status, setStatus] = useState("pending");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const load = async () => {
     const [fu, l] = await Promise.all([
-      api.get("/follow-ups", { params: status ? { status } : {} }),
+      api.get("/follow-ups", { params: { ...(status ? { status } : {}), ...(dateFrom ? { date_from: dateFrom } : {}), ...(dateTo ? { date_to: dateTo } : {}) } }),
       api.get("/leads"),
     ]);
     setItems(asArray(fu.data));
     setLeads(asArray(l.data));
   };
 // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [status]);
+  useEffect(() => { load(); }, [status, dateFrom, dateTo]);
   
   const complete = async (id) => {
     await api.patch(`/follow-ups/${id}`, { status: "done" });
@@ -43,6 +45,8 @@ export default function FollowUps() {
             {overdue.length} overdue · {upcoming.length} upcoming
           </h2>
         </div>
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm" aria-label="Follow-up start date" />
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm" aria-label="Follow-up end date" />
         <Select value={status || "__all__"} onValueChange={(v) => setStatus(v === "__all__" ? "" : v)}>
           <SelectTrigger className="w-[160px] h-9 rounded-sm border-[#E6E4DD]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
