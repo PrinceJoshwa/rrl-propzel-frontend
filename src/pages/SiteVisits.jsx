@@ -4,7 +4,7 @@ import { useProjects } from "@/contexts/ProjectContext";
 import { Link } from "react-router-dom";
 import { VISIT } from "@/constants/testIds";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarClock, MapPin, User2 } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, List, MapPin, User2 } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_TONE = {
@@ -20,6 +20,8 @@ export default function SiteVisits() {
   const [leads, setLeads] = useState([]);
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("");
+  const [view, setView] = useState("calendar");
+  const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
   const load = async () => {
     const params = {};
@@ -41,6 +43,12 @@ export default function SiteVisits() {
     (acc[d] = acc[d] || []).push(v);
     return acc;
   }, {});
+  const monthDays = Array.from({ length: 42 }, (_, index) => {
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const day = new Date(first); day.setDate(index - first.getDay() + 1);
+    return day;
+  });
+  const visitForDay = (day) => filtered.filter((v) => new Date(v.scheduled_at).toDateString() === day.toDateString());
 
   const updateStatus = async (id, s) => {
     await api.patch(`/site-visits/${id}`, { status: s });
@@ -57,6 +65,8 @@ export default function SiteVisits() {
             {filtered.length} scheduled
           </h2>
         </div>
+        <div className="flex items-center gap-2">
+        <div className="inline-flex border border-[#E6E4DD] rounded-sm overflow-hidden"><button onClick={() => setView("calendar")} title="Calendar view" className={`h-9 w-9 grid place-items-center ${view === "calendar" ? "bg-forest text-white" : "bg-white text-forest"}`}><CalendarDays className="h-4 w-4" /></button><button onClick={() => setView("agenda")} title="Agenda view" className={`h-9 w-9 grid place-items-center ${view === "agenda" ? "bg-forest text-white" : "bg-white text-forest"}`}><List className="h-4 w-4" /></button></div>
         <Select value={status || "__all__"} onValueChange={(v) => setStatus(v === "__all__" ? "" : v)}>
           <SelectTrigger className="w-[160px] h-9 rounded-sm border-[#E6E4DD]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
@@ -67,9 +77,12 @@ export default function SiteVisits() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        </div>
       </div>
 
-      <div className="space-y-6">
+      {view === "calendar" && <div className="border border-[#E6E4DD] bg-white rounded-sm overflow-hidden"><div className="p-4 border-b border-[#E6E4DD] flex items-center justify-between"><button title="Previous month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="h-8 w-8 border border-[#E6E4DD] rounded-sm grid place-items-center"><ChevronLeft className="h-4 w-4" /></button><div className="font-display font-bold text-xl text-forest">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</div><button title="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="h-8 w-8 border border-[#E6E4DD] rounded-sm grid place-items-center"><ChevronRight className="h-4 w-4" /></button></div><div className="grid grid-cols-7 border-l border-t border-[#E6E4DD]">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="p-2 border-r border-b border-[#E6E4DD] bg-bone-alt/50 text-[10px] uppercase tracking-[0.14em] text-forest/50">{day}</div>)}{monthDays.map((day) => { const entries = visitForDay(day); const current = day.getMonth() === month.getMonth(); return <div key={day.toISOString()} className={`min-h-28 p-2 border-r border-b border-[#E6E4DD] ${current ? "bg-white" : "bg-bone-alt/25 text-forest/35"}`}><div className="text-xs font-bold mb-2">{day.getDate()}</div><div className="space-y-1">{entries.slice(0, 3).map((visit) => { const lead = leads.find((l) => l.id === visit.lead_id); return <Link key={visit.id} to={`/leads/${visit.lead_id}`} className="block px-1.5 py-1 rounded-sm bg-forest/8 text-[10px] text-forest truncate"><b>{new Date(visit.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b> {lead?.name || "Visit"}</Link>; })}{entries.length > 3 && <div className="text-[10px] text-forest/55">+{entries.length - 3} more</div>}</div></div>; })}</div></div>}
+
+      {view === "agenda" && <div className="space-y-6">
         {Object.entries(grouped).sort((a, b) => new Date(a[0]) - new Date(b[0])).map(([day, arr]) => (
           <div key={day} className="border border-[#E6E4DD] bg-white rounded-sm">
             <div className="px-5 py-3 border-b border-[#E6E4DD] flex items-center justify-between bg-bone-alt/40">
@@ -122,7 +135,7 @@ export default function SiteVisits() {
             No visits scheduled.
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
