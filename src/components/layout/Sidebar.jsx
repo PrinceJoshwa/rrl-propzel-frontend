@@ -70,12 +70,8 @@ export default function Sidebar() {
       className="grain relative flex flex-col w-[260px] shrink-0 bg-forest text-white min-h-screen"
     >
       <div className="relative z-10 px-6 pt-8 pb-6">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-sm bg-wheat text-forest grid place-items-center font-display font-black">T</div>
-          <div>
-            <div className="font-display font-black text-xl tracking-tight leading-none">Tasko</div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-white/50 mt-1">Real Estate CRM</div>
-          </div>
+        <div className="flex items-center">
+          <img src="/propzel-logo.jpeg" alt="Propzel" className="h-12 w-auto max-w-[190px] object-contain object-left rounded-sm bg-white px-2 py-1" />
         </div>
       </div>
 

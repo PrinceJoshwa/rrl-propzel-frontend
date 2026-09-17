@@ -365,9 +365,9 @@ export default function CallerDesk() {
       <main className="p-6 space-y-6 overflow-x-hidden">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="label-caps">Taskko / CallerDesk</div>
+            <div className="label-caps">Propzel / CallerDesk</div>
             <h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">{activeFeature.label}</h2>
-            <div className="text-sm text-forest/60 mt-1">Campaign calling, call logs, DNP status and CallerDesk connection inside Taskko.</div>
+            <div className="text-sm text-forest/60 mt-1">Campaign calling, call logs, DNP status and CallerDesk connection inside Propzel.</div>
           </div>
           <span className={`text-[10px] uppercase tracking-[0.16em] font-bold border rounded-sm px-2 py-1 ${status.configured ? "text-[#2D6A4F] border-[#2D6A4F]/30 bg-[#2D6A4F]/10" : "text-clay border-clay/30 bg-clay/10"}`}>{status.configured ? "Live" : "Pending credentials"}</span>
         </div>

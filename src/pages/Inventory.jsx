@@ -104,7 +104,7 @@ function F({ label, value, onChange, type = "text" }) {
   );
 }
 
-function ImportDialog({ projectId, onDone }) {
+function ImportDialog({ projectId, projectName, onDone }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState([]);
   const [fileName, setFileName] = useState("");
@@ -149,6 +149,9 @@ function ImportDialog({ projectId, onDone }) {
       <DialogContent className="rounded-sm max-w-lg">
         <DialogHeader><DialogTitle className="font-display text-2xl">Import units</DialogTitle></DialogHeader>
         <div className="text-xs text-forest/60">Required columns: <code>tower, floor, unit_no, config</code>. Optional: <code>carpet_area, price, facing, status</code>.</div>
+        <div className="border border-forest/20 bg-forest/5 rounded-sm px-3 py-2 text-sm text-forest">
+          Import target: <strong>{projectName || "Select a project before importing"}</strong>
+        </div>
         <label className="block border-2 border-dashed border-[#E6E4DD] rounded-sm p-6 text-center hover:border-forest transition-colors duration-150 cursor-pointer">
           <input type="file" accept=".csv" onChange={onFile} className="hidden" data-testid="inv-import-file" />
           <UploadCloud className="h-6 w-6 mx-auto text-forest/60 mb-2" />
@@ -239,7 +242,7 @@ export default function Inventory() {
           <button data-testid="inv-export-btn" onClick={exportCsv} className="h-9 rounded-sm border border-[#E6E4DD] text-sm text-forest hover:border-forest transition-colors duration-150 inline-flex items-center gap-2 px-3">
             <Download className="h-4 w-4" /> Export CSV
           </button>
-          {canEdit && <ImportDialog projectId={projectFilter} onDone={load} />}
+          {canEdit && <ImportDialog projectId={projectFilter} projectName={projects.find((p) => p.id === projectFilter)?.name} onDone={load} />}
         </div>
       </div>
 

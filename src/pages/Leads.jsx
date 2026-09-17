@@ -188,6 +188,7 @@ function KanbanBoard({ leads, onMove, users, canMove }) {
             <div className="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
               {byStage[s.key].map((l) => {
                 const owner = users.find((u) => u.id === l.assigned_to);
+                const coOwners = users.filter((u) => (l.co_assigned_to || []).includes(u.id));
                 return (
                   <Link
                     to={`/leads/${l.id}`}
@@ -212,6 +213,11 @@ function KanbanBoard({ leads, onMove, users, canMove }) {
                       <div className="mt-2 pt-2 border-t border-[#E6E4DD] flex items-center gap-2">
                         <div className="h-5 w-5 rounded-sm bg-forest text-white grid place-items-center text-[10px] font-bold">{owner.name.slice(0, 1)}</div>
                         <div className="text-[11px] text-forest/60 truncate">{owner.name}</div>
+                      </div>
+                    )}
+                    {coOwners.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {coOwners.map((coOwner) => <span key={coOwner.id} className="text-[9px] uppercase tracking-[0.12em] font-bold rounded-sm bg-wheat/30 text-forest px-1.5 py-0.5">Co-owner: {coOwner.name}</span>)}
                       </div>
                     )}
                   </Link>
@@ -243,6 +249,7 @@ function LeadsTable({ leads, users }) {
         <tbody className="divide-y divide-[#E6E4DD]">
           {leads.map((l) => {
             const owner = users.find((u) => u.id === l.assigned_to);
+            const coOwners = users.filter((u) => (l.co_assigned_to || []).includes(u.id));
             return (
               <tr
                 key={l.id}
@@ -263,7 +270,10 @@ function LeadsTable({ leads, users }) {
                 </td>
                 <td className="px-4 py-3 text-forest/70 text-xs">{SOURCE_LABEL[l.source] || l.source}</td>
                 <td className="px-4 py-3"><StageBadge stage={l.stage} /></td>
-                <td className="px-4 py-3 text-forest/70 text-xs">{owner?.name || "—"}</td>
+                <td className="px-4 py-3 text-forest/70 text-xs">
+                  <div>{owner?.name || "—"}</div>
+                  {coOwners.map((coOwner) => <div key={coOwner.id} className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#8A5A2B]">Co-owner: {coOwner.name}</div>)}
+                </td>
                 <td className="px-4 py-3 text-forest/70 text-xs tabular-nums">{inr(l.budget_min)} – {inr(l.budget_max)}</td>
                 <td className="px-4 py-3 text-forest/50 text-xs">{relTime(l.created_at)}</td>
               </tr>

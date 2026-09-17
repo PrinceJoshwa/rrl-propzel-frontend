@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { AUTH } from "@/constants/testIds";
-import { Building2, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 export default function Login() {
   const { user, login, error } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("admin@tasko.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   if (user && user !== false) return <Navigate to="/" replace />;
@@ -25,14 +25,8 @@ export default function Login() {
     <div className="min-h-screen grid md:grid-cols-2 bg-bone">
       {/* Left brand panel */}
       <div className="relative hidden md:flex flex-col justify-between p-12 bg-forest text-white grain overflow-hidden">
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-sm bg-wheat text-forest grid place-items-center font-display font-black">
-            T
-          </div>
-          <div>
-            <div className="font-display font-black text-2xl tracking-tight leading-none">Tasko</div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60 mt-1">Real Estate CRM</div>
-          </div>
+        <div className="relative z-10">
+          <img src="/propzel-logo.jpeg" alt="Propzel" className="h-16 w-auto max-w-[260px] object-contain object-left rounded-sm bg-white px-3 py-1" />
         </div>
 
         <div className="relative z-10 max-w-md">
@@ -45,7 +39,7 @@ export default function Login() {
           <p className="text-white/70 mt-6 text-sm leading-relaxed max-w-sm">
             Capture leads from MagicBricks, 99acres, Google & Meta. Route them to the right
             executive. Move them through your funnel with WhatsApp, email & site visits — without
-            leaving Tasko.
+            leaving Propzel.
           </p>
         </div>
 
@@ -68,9 +62,8 @@ export default function Login() {
       {/* Right form */}
       <div className="flex items-center justify-center p-6 md:p-16">
         <div className="w-full max-w-md">
-          <div className="md:hidden mb-8 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-sm bg-forest text-wheat grid place-items-center font-display font-black">T</div>
-            <span className="font-display font-black text-xl text-forest tracking-tight">Tasko</span>
+          <div className="md:hidden mb-8">
+            <img src="/propzel-logo.jpeg" alt="Propzel" className="h-11 w-auto max-w-[220px] object-contain object-left" />
           </div>
 
           <div className="text-[10px] uppercase tracking-[0.22em] text-forest/50">Sign in</div>
@@ -78,7 +71,7 @@ export default function Login() {
             Welcome back.
           </h1>
           <p className="text-sm text-forest/60 mt-3">
-            Use one of the seeded accounts — admin, manager, or executive — to explore Tasko.
+            Sign in to access your Propzel workspace.
           </p>
 
           <form onSubmit={submit} className="mt-10 space-y-5">
@@ -91,7 +84,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-11 px-3 border border-[#E6E4DD] bg-white rounded-sm text-sm focus:outline-none focus:border-forest focus:ring-1 focus:ring-forest transition-colors duration-150"
-                placeholder="admin@tasko.com"
+                placeholder="you@company.com"
               />
             </div>
             <div>
@@ -127,27 +120,6 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-10 border-t border-[#E6E4DD] pt-6">
-            <div className="label-caps mb-3">Try a role</div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              {[
-                { r: "Admin", e: "admin@tasko.com", p: "admin123" },
-                { r: "Manager", e: "manager@tasko.com", p: "manager123" },
-                { r: "Executive", e: "priya@tasko.com", p: "executive123" },
-              ].map((x) => (
-                <button
-                  type="button"
-                  key={x.r}
-                  onClick={() => { setEmail(x.e); setPassword(x.p); }}
-                  data-testid={`try-role-${x.r.toLowerCase()}`}
-                  className="border border-[#E6E4DD] bg-white rounded-sm px-2 py-2 text-forest hover:border-forest transition-colors duration-150"
-                >
-                  <div className="font-semibold">{x.r}</div>
-                  <div className="text-forest/50 text-[10px] truncate">{x.e}</div>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

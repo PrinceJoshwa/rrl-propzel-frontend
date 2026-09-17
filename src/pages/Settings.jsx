@@ -87,7 +87,7 @@ export default function Settings() {
               </div>
               <div>
                 <div className="label-caps mb-1.5">Instance ID</div>
-                <input value={s.whatsapp_instance_id || ""} onChange={(e) => set("whatsapp_instance_id", e.target.value)} placeholder="Taskko WhatsApp instance" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+                <input value={s.whatsapp_instance_id || ""} onChange={(e) => set("whatsapp_instance_id", e.target.value)} placeholder="Propzel WhatsApp instance" className="w-full h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
               </div>
             </div>
             <div className="mt-3">
@@ -108,7 +108,7 @@ export default function Settings() {
         {s.email_enabled && (
           <div className="pl-11">
             <div className="label-caps mb-1.5">From address</div>
-            <input value={s.resend_from_email || ""} onChange={(e) => set("resend_from_email", e.target.value)} placeholder="sales@tasko.com" className="w-full max-w-md h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
+            <input value={s.resend_from_email || ""} onChange={(e) => set("resend_from_email", e.target.value)} placeholder="sales@propzel.com" className="w-full max-w-md h-10 border border-[#E6E4DD] rounded-sm px-3 text-sm focus:outline-none focus:border-forest" />
           </div>
         )}
 
@@ -149,7 +149,7 @@ export default function Settings() {
               )}
             </div>
             <div className="text-xs text-forest/60 mt-1">
-              Taskko uses CallerDesk for click-to-call, callbacks, campaigns, and call logs.
+              Propzel uses CallerDesk for click-to-call, callbacks, campaigns, and call logs.
             </div>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function Settings() {
         <Row
           icon={Zap}
           title="Auto-call on new lead"
-          hint="When a fresh lead is assigned, Taskko asks the configured calling provider to ring the owner."
+          hint="When a fresh lead is assigned, Propzel asks the configured calling provider to ring the owner."
           testId="settings-toggle-autocall"
           checked={!!s.auto_call_on_new_lead}
           onChange={(v) => set("auto_call_on_new_lead", v)}
@@ -212,7 +212,7 @@ export default function Settings() {
           <Row
             icon={Zap}
             title="Auto follow-up on missed / no-answer calls"
-            hint="If the calling provider reports the lead did not pick up, Taskko creates a follow-up automatically."
+            hint="If the calling provider reports the lead did not pick up, Propzel creates a follow-up automatically."
             testId="settings-toggle-missed-followup"
             checked={!!s.missed_call_followup_enabled}
             onChange={(v) => set("missed_call_followup_enabled", v)}
@@ -221,11 +221,12 @@ export default function Settings() {
             <div className="pl-11 mt-3">
               <div className="label-caps mb-1.5">Schedule next call after…</div>
               <Select
-                value={String(s.missed_call_followup_hours ?? 24)}
+                value={String(s.missed_call_followup_hours ?? (1 / 6))}
                 onValueChange={(v) => set("missed_call_followup_hours", Number(v))}
               >
                 <SelectTrigger data-testid="settings-missed-hours" className="w-56 h-10 rounded-sm border-[#E6E4DD]"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="0.16666666666666666">10 minutes</SelectItem>
                   <SelectItem value="0.25">15 minutes</SelectItem>
                   <SelectItem value="1">1 hour</SelectItem>
                   <SelectItem value="2">2 hours</SelectItem>

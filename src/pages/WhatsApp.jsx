@@ -362,7 +362,7 @@ export default function WhatsApp() {
           <PlugZap className="h-5 w-5 mt-0.5 text-[#2D6A4F]" />
           <div>
             <div className="font-display font-bold text-lg text-forest">Admin WhatsApp connection</div>
-            <div className="text-sm text-forest/70 mt-1">Taskko is configured to use the shared admin WhatsApp account from the existing Marketly service.</div>
+            <div className="text-sm text-forest/70 mt-1">Propzel is configured to use the shared admin WhatsApp account from the existing Marketly service.</div>
           </div>
         </section>
 
