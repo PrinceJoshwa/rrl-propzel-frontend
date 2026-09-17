@@ -149,7 +149,7 @@ export default function Settings() {
               )}
             </div>
             <div className="text-xs text-forest/60 mt-1">
-              Taskko now uses a provider boundary for call initiation and callbacks. Twilio remains available for existing installs until the client supplies the replacement Calling/SMS API.
+              Taskko uses CallerDesk for click-to-call, callbacks, campaigns, and call logs.
             </div>
           </div>
         </div>
