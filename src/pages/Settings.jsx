@@ -161,7 +161,6 @@ export default function Settings() {
             <SelectContent>
               <SelectItem value="pending">Pending client API</SelectItem>
               <SelectItem value="callerdesk">CallerDesk</SelectItem>
-              <SelectItem value="twilio">Twilio legacy</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -243,7 +242,7 @@ export default function Settings() {
 
         {!calling?.configured && (
           <div className="mt-5 text-xs text-forest/50">
-            Waiting for live calling credentials. Existing Twilio env vars still enable legacy mode when provider is set to Twilio.
+            Add the current CallerDesk credentials to activate live click-to-call.
           </div>
         )}
       </section>
@@ -254,14 +253,13 @@ export default function Settings() {
           <div>
             <div className="font-display font-bold text-xl text-forest tracking-tight">Calling & SMS replacement</div>
             <div className="text-xs text-forest/60 mt-1">
-              Current Twilio usage has been isolated behind backend provider functions so the next provider can be added without touching lead screens.
+            CallerDesk powers click-to-call, callbacks, campaign dialing, and call logs.
             </div>
           </div>
         </div>
         <div className="grid md:grid-cols-3 gap-3">
           {[
             { name: "CallerDesk", tag: s.calling_provider === "callerdesk" ? "Selected provider" : "Available", url: "https://api.callerdesk.io", active: s.calling_provider === "callerdesk" },
-            { name: "Twilio legacy", tag: "Supported temporarily", url: "https://twilio.com/voice" },
             { name: "SMS provider", tag: "Awaiting client details", url: "#" },
           ].map((p) => (
             <a key={p.name} href={p.url} target="_blank" rel="noreferrer" className={`border rounded-sm p-4 transition-colors duration-150 ${p.active ? "border-forest bg-forest/5" : "border-[#E6E4DD] hover:border-forest"}`}>
