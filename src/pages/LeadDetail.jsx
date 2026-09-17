@@ -574,7 +574,9 @@ export default function LeadDetail() {
               {activities.length === 0 && <div className="text-sm text-forest/50 py-6 text-center">No activity yet.</div>}
               {activities.map((a) => {
                 const Icon = KIND_ICON[a.kind] || Send;
-                const rec = a.meta?.recording_url;
+                // Legacy Twilio recordings require browser authentication and
+                // must never be fetched by the Taskko UI.
+                const rec = a.meta?.recording_url && !/twilio\.com/i.test(a.meta.recording_url) ? a.meta.recording_url : null;
                 return (
                   <div key={a.id} className="flex gap-3">
                     <div className="mt-1 h-7 w-7 rounded-sm border border-[#E6E4DD] grid place-items-center text-forest shrink-0">
