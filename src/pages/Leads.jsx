@@ -303,7 +303,7 @@ export default function Leads() {
   const [projectFilter, setProjectFilter] = useState(params.get("project_id") || "");
   const [createdFilter, setCreatedFilter] = useState(params.get("created") || "");
   const [loading, setLoading] = useState(false);
-  const canModifyLead = user?.role === "admin";
+  const canModifyLead = ["admin", "super_admin"].includes(user?.role);
 
   // Sync filters → URL
   useEffect(() => {

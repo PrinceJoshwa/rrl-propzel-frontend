@@ -10,6 +10,12 @@ export const api = axios.create({
   timeout: 20000,
 });
 
+api.interceptors.request.use((config) => {
+  const organizationId = localStorage.getItem("propzel.activeOrganizationId");
+  if (organizationId) config.headers["X-Organization-Id"] = organizationId;
+  return config;
+});
+
 export function formatApiError(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
   if (typeof detail === "string") return detail;

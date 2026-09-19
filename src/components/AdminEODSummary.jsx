@@ -104,7 +104,7 @@ export default function AdminEODSummary({ mode = "card" }) {
   const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
-    if (!user || user.role !== "admin") return;
+    if (!user || !["admin", "super_admin"].includes(user.role)) return;
     try {
       const r = await api.get("/admin/eod-summary");
       setData(r.data);
@@ -118,7 +118,7 @@ export default function AdminEODSummary({ mode = "card" }) {
   // Auto-open modal once per day for admin after 6PM local
   useEffect(() => {
     if (mode !== "modal-controller") return;
-    if (!user || user.role !== "admin") return;
+    if (!user || !["admin", "super_admin"].includes(user.role)) return;
     const now = new Date();
     if (now.getHours() < 18) return;
     const key = `tasko-eod-shown-${now.toISOString().slice(0, 10)}`;
@@ -146,7 +146,7 @@ export default function AdminEODSummary({ mode = "card" }) {
     }
   };
 
-  if (!user || user.role !== "admin") return null;
+  if (!user || !["admin", "super_admin"].includes(user.role)) return null;
 
   if (mode === "modal-controller") {
     return (

@@ -178,7 +178,7 @@ export default function Inventory() {
   const [units, setUnits] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [projectFilter, setProjectFilter] = useState(activeId && activeId !== "__all__" ? activeId : (projects[0]?.id || ""));
-  const canEdit = user?.role === "admin" || user?.role === "manager";
+  const canEdit = ["admin", "manager", "super_admin"].includes(user?.role);
 
   useEffect(() => {
     if (!projectFilter && projects.length > 0) setProjectFilter(projects[0].id);

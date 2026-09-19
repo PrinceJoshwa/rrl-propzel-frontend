@@ -372,7 +372,7 @@ export default function LeadDetail() {
       setActivities(asArray(a.data));
       setCoAssignees(l.data.co_assigned_to || []);
       setVisitProjectId(l.data.project_id || "");
-      if (user?.role === "admin") {
+      if (["admin", "super_admin"].includes(user?.role)) {
         api.get("/whatsapp-templates")
           .then((t) => setTemplates(asArray(t.data)))
           .catch(() => setTemplates([]));
@@ -392,7 +392,7 @@ export default function LeadDetail() {
 
   const owner = users.find((u) => u.id === lead.assigned_to);
   const project = projects.find((p) => p.id === lead.project_id);
-  const canModifyLead = user?.role === "admin" || user?.role === "manager";
+  const canModifyLead = ["admin", "manager", "super_admin"].includes(user?.role);
 
   const changeStage = async (newStage) => {
     const note = newStage === "lost" ? window.prompt("Add a reason for marking this lead as lost:") : "";
@@ -465,7 +465,7 @@ export default function LeadDetail() {
         </button>
         <div className="flex items-center gap-4">
           {canModifyLead && <EditLeadDialog lead={lead} projects={projects} onSaved={load} />}
-          {user?.role === "admin" && (
+          {["admin", "super_admin"].includes(user?.role) && (
             <button data-testid="lead-delete-btn" onClick={deleteLead} className="text-clay/80 hover:text-clay inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.15em] font-bold transition-colors duration-150">
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
@@ -518,7 +518,7 @@ export default function LeadDetail() {
             </div>
           </div>
 
-          {user?.role === "admin" && <WhatsAppPanel leadId={leadId} />}
+          {["admin", "super_admin"].includes(user?.role) && <WhatsAppPanel leadId={leadId} />}
 
           {/* Calling provider button + manual log actions */}
           <div className="grid grid-cols-4 gap-3">
@@ -745,7 +745,7 @@ export default function LeadDetail() {
               </DialogContent>
             </Dialog>
 
-            {user?.role === "admin" && lead.phone && (
+            {["admin", "super_admin"].includes(user?.role) && lead.phone && (
               <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="w-full h-10 rounded-sm bg-[#25D366]/10 text-[#128C7E] text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-[#25D366]/20 transition-colors duration-150">
                 <MessageSquare className="h-4 w-4" /> WhatsApp
               </a>

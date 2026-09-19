@@ -10,6 +10,7 @@ import { Plus, Trash2, Phone, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_TONE = {
+  super_admin: "bg-[#102A20] text-white",
   admin: "bg-forest text-white",
   manager: "bg-clay/10 text-clay border border-clay/30",
   executive: "bg-[#2D6A4F]/10 text-[#2D6A4F] border border-[#2D6A4F]/30",
@@ -59,12 +60,15 @@ function PhoneCell({ member, canEdit, onSaved }) {
 export default function Team() {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "executive", phone: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "executive", phone: "", organization_id: "" });
+  const canManage = user?.role === "admin" || user?.role === "super_admin";
 
   const load = async () => {
-    const { data } = await api.get("/users");
-    setUsers(asArray(data));
+    const [usersResponse, organizationsResponse] = await Promise.all([api.get("/users"), api.get("/organizations")]);
+    setUsers(asArray(usersResponse.data));
+    setOrganizations(asArray(organizationsResponse.data));
   };
   useEffect(() => { load(); }, []);
 
@@ -72,10 +76,11 @@ export default function Team() {
     try {
       const body = { ...form };
       if (!body.phone) delete body.phone;
+      if (!body.organization_id) delete body.organization_id;
       await api.post("/users", body);
       toast.success("Member added");
       setOpen(false);
-      setForm({ name: "", email: "", password: "", role: "executive", phone: "" });
+      setForm({ name: "", email: "", password: "", role: "executive", phone: "", organization_id: "" });
       load();
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
@@ -99,7 +104,7 @@ export default function Team() {
           </h2>
           <div className="text-sm text-forest/60 mt-1">Add each member's mobile in E.164 format (e.g. +919812345678) so the calling provider can bridge outbound calls.</div>
         </div>
-        {user?.role === "admin" && (
+        {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <button data-testid={TEAM.newBtn} className="h-9 rounded-sm bg-forest text-white text-sm px-3.5 font-medium hover:bg-forest-soft transition-colors duration-150 inline-flex items-center gap-2">
@@ -136,9 +141,22 @@ export default function Team() {
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="executive">Executive</SelectItem>
                       <SelectItem value="sales">Sales</SelectItem>
+                      {user?.role === "super_admin" && <SelectItem value="super_admin">Super Admin</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
+                {user?.role === "super_admin" && (
+                  <div>
+                    <div className="label-caps mb-1.5">Organisation</div>
+                    <Select value={form.organization_id || "__none__"} onValueChange={(v) => setForm({ ...form, organization_id: v === "__none__" ? "" : v })}>
+                      <SelectTrigger className="h-10 rounded-sm border-[#E6E4DD]"><SelectValue placeholder="Select organisation" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No organisation</SelectItem>
+                        {organizations.map((org) => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <button data-testid={TEAM.submitBtn} onClick={submit} disabled={!form.name || !form.email || !form.password} className="h-9 px-4 rounded-sm bg-forest text-white text-sm font-medium hover:bg-forest-soft transition-colors duration-150 disabled:opacity-50">Create</button>
@@ -156,6 +174,7 @@ export default function Team() {
               <th className="text-left px-4 py-3 font-bold">Email</th>
               <th className="text-left px-4 py-3 font-bold">Phone</th>
               <th className="text-left px-4 py-3 font-bold">Role</th>
+              <th className="text-left px-4 py-3 font-bold">Organisation</th>
               <th className="text-left px-4 py-3 font-bold">Status</th>
               <th className="text-right px-4 py-3 font-bold">Actions</th>
             </tr>
@@ -171,16 +190,17 @@ export default function Team() {
                 </td>
                 <td className="px-4 py-3 text-forest/70">{u.email}</td>
                 <td className="px-4 py-3">
-                  <PhoneCell member={u} canEdit={user?.role === "admin"} onSaved={load} />
+                  <PhoneCell member={u} canEdit={canManage} onSaved={load} />
                 </td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] uppercase tracking-[0.15em] font-bold rounded-sm px-2 py-0.5 ${ROLE_TONE[u.role] || ""}`}>{u.role}</span>
                 </td>
+                <td className="px-4 py-3 text-forest/70 text-xs">{organizations.find((org) => org.id === u.organization_id)?.name || (u.role === "super_admin" ? "All organisations" : "—")}</td>
                 <td className="px-4 py-3 text-forest/70 text-xs">
                   {u.active === false ? "Disabled" : "Active"}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {user?.role === "admin" && user?.id !== u.id && (
+                  {canManage && user?.id !== u.id && (
                     <button onClick={() => remove(u.id)} className="text-forest/50 hover:text-clay transition-colors duration-150 p-1.5 rounded-sm">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

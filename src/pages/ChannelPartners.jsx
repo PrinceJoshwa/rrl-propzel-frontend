@@ -40,7 +40,7 @@ export default function ChannelPartners() {
           <h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">Channel partners</h2>
           <div className="text-sm text-forest/60 mt-1">Brokers, agencies and referrers sourcing leads into Propzel.</div>
         </div>
-        {user?.role === "admin" && <Dialog open={open} onOpenChange={setOpen}>
+        {["admin", "super_admin"].includes(user?.role) && <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <button data-testid={CONSOLE.cpNewBtn} className="h-9 rounded-sm bg-forest text-white text-sm px-3.5 font-medium hover:bg-forest-soft transition-colors duration-150 inline-flex items-center gap-2">
               <Plus className="h-4 w-4" /> New partner
@@ -74,7 +74,7 @@ export default function ChannelPartners() {
                 <div className="font-display font-bold text-xl text-forest tracking-tight">{p.name}</div>
                 <div className="text-sm text-forest/60 mt-0.5">{p.company}</div>
               </div>
-              {user?.role === "admin" && <button onClick={() => remove(p.id)} className="text-forest/40 hover:text-clay p-1 transition-colors duration-150"><Trash2 className="h-3.5 w-3.5" /></button>}
+              {["admin", "super_admin"].includes(user?.role) && <button onClick={() => remove(p.id)} className="text-forest/40 hover:text-clay p-1 transition-colors duration-150"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
             <div className="mt-3 space-y-1.5 text-xs text-forest/70">
               {p.phone && <div className="inline-flex items-center gap-1.5"><Phone className="h-3 w-3" /> {p.phone}</div>}

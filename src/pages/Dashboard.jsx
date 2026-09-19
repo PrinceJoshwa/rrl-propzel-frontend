@@ -743,7 +743,7 @@ function ActionItemsTab() {
 
   return (
     <div className="space-y-6">
-      {user?.role === "admin" && <AdminEODSummary mode="card" />}
+      {["admin", "super_admin"].includes(user?.role) && <AdminEODSummary mode="card" />}
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div className="label-caps">Overview</div>
         <div className="flex items-end gap-2"><label className="label-caps">From<input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="block mt-1 h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm font-normal" /></label><label className="label-caps">To<input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="block mt-1 h-9 border border-[#E6E4DD] rounded-sm px-2 text-sm font-normal" /></label><div className="text-sm text-forest/60 pb-2">{today}</div></div>

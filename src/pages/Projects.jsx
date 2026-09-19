@@ -37,8 +37,8 @@ export default function Projects() {
     } catch (e) { toast.error(formatApiError(e.response?.data?.detail)); }
   };
 
-  const canCreate = user?.role === "admin" || user?.role === "manager";
-  const canDelete = user?.role === "admin";
+  const canCreate = ["admin", "manager", "super_admin"].includes(user?.role);
+  const canDelete = ["admin", "super_admin"].includes(user?.role);
   const [edit, setEdit] = useState(null); // project being edited
   const [editForm, setEditForm] = useState({});
 

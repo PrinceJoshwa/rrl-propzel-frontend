@@ -11,6 +11,8 @@ import {
 import { Building2, Search } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import NotificationBell from "@/components/NotificationBell";
+import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 const TITLES = {
   "/": "Overview",
@@ -32,8 +34,10 @@ const TITLES = {
 
 export default function Topbar() {
   const { projects, activeId, setActive } = useProjects();
+  const { user } = useAuth();
+  const { organizations, activeOrganizationId, setActiveOrganization } = useOrganization();
   const { pathname } = useLocation();
-  const title = TITLES[pathname] || (pathname.startsWith("/callerdesk") ? "CallerDesk" : pathname.startsWith("/leads/") ? "Lead" : "Propzel");
+  const title = TITLES[pathname] || (pathname === "/super-admin" ? "Super Admin" : pathname.startsWith("/callerdesk") ? "CallerDesk" : pathname.startsWith("/leads/") ? "Lead" : "Propzel");
   // Project switcher only appears on pages where it actually filters data.
   const SHOW_ON = new Set(["/projects", "/inventory", "/site-visits", "/follow-ups"]);
   const showSwitcher = SHOW_ON.has(pathname);
@@ -62,6 +66,12 @@ export default function Topbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          {user?.role === "super_admin" && (
+            <Select value={activeOrganizationId || ""} onValueChange={setActiveOrganization}>
+              <SelectTrigger className="w-[190px] h-9 rounded-sm border-[#E6E4DD] bg-white text-forest"><SelectValue placeholder="Select organisation" /></SelectTrigger>
+              <SelectContent>{organizations.filter((org) => org.active !== false).map((org) => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
           {showSwitcher && (
             <>
               <Building2 className="h-4 w-4 text-forest/60" />

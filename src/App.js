@@ -3,6 +3,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { Toaster } from "@/components/ui/sonner";
 
 import Login from "@/pages/Login";
@@ -24,6 +25,7 @@ import CallerDesk from "@/pages/CallerDesk";
 import BulkAllocation from "@/pages/BulkAllocation";
 import ChannelPartners from "@/pages/ChannelPartners";
 import Proposals from "@/pages/Proposals";
+import SuperAdmin from "@/pages/SuperAdmin";
 
 function Protected({ children }) {
   const { user } = useAuth();
@@ -46,9 +48,7 @@ function AppRoutes() {
         path="/"
         element={
           <Protected>
-            <ProjectProvider>
-              <AppLayout />
-            </ProjectProvider>
+            <OrganizationProvider><ProjectProvider><AppLayout /></ProjectProvider></OrganizationProvider>
           </Protected>
         }
       >
@@ -72,6 +72,7 @@ function AppRoutes() {
         <Route path="proposals" element={<Proposals />} />
         <Route path="team" element={<Team />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="super-admin" element={<SuperAdmin />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
