@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, asArray, formatApiError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { TEAM } from "@/constants/testIds";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
@@ -59,18 +60,29 @@ function PhoneCell({ member, canEdit, onSaved }) {
 
 export default function Team() {
   const { user } = useAuth();
+  const { activeOrganizationId, activeOrganization, error: organizationError } = useOrganization();
   const [users, setUsers] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "executive", phone: "", organization_id: "" });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const canManage = user?.role === "admin" || user?.role === "super_admin";
 
   const load = async () => {
-    const [usersResponse, organizationsResponse] = await Promise.all([api.get("/users"), api.get("/organizations")]);
-    setUsers(asArray(usersResponse.data));
-    setOrganizations(asArray(organizationsResponse.data));
+    setLoading(true);
+    setLoadError("");
+    try {
+      const usersUrl = user?.role === "super_admin" ? "/users" : "/users";
+      const [usersResponse, organizationsResponse] = await Promise.all([api.get(usersUrl), api.get("/organizations")]);
+      setUsers(asArray(usersResponse.data));
+      setOrganizations(asArray(organizationsResponse.data));
+    } catch (e) {
+      setUsers([]);
+      setLoadError(formatApiError(e.response?.data?.detail));
+    } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (user && activeOrganizationId) load(); }, [user, activeOrganizationId]);
 
   const submit = async () => {
     try {
@@ -102,6 +114,7 @@ export default function Team() {
           <h2 className="font-display font-black text-3xl text-forest tracking-tight mt-1">
             {users.length} member{users.length === 1 ? "" : "s"}
           </h2>
+          {activeOrganization && <div className="text-xs text-forest/60 mt-1">Organisation: {activeOrganization.name}</div>}
           <div className="text-sm text-forest/60 mt-1">Add each member's mobile in E.164 format (e.g. +919812345678) so the calling provider can bridge outbound calls.</div>
         </div>
         {canManage && (
@@ -167,6 +180,7 @@ export default function Team() {
       </div>
 
       <div className="border border-[#E6E4DD] bg-white rounded-sm overflow-hidden">
+        {(organizationError || loadError) && <div className="m-4 border border-clay/30 bg-clay/5 px-3 py-2 text-sm text-clay">{organizationError || loadError} <button onClick={load} className="ml-2 underline font-medium">Retry</button></div>}
         <table className="w-full text-sm">
           <thead className="bg-bone-alt/60 border-b border-[#E6E4DD]">
             <tr className="text-[10px] uppercase tracking-[0.15em] text-forest/70">
@@ -180,6 +194,8 @@ export default function Team() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E6E4DD]">
+            {loading && <tr><td colSpan={7} className="py-12 text-center text-forest/50">Loading team members...</td></tr>}
+            {!loading && !loadError && users.length === 0 && <tr><td colSpan={7} className="py-12 text-center text-forest/50">No members are assigned to this organisation yet.</td></tr>}
             {users.map((u) => (
               <tr key={u.id} data-testid={TEAM.row(u.id)} className="hover:bg-bone-alt/30 transition-colors duration-100">
                 <td className="px-4 py-3">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { api, asArray, relTime } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { NAV } from "@/constants/testIds";
@@ -11,6 +11,7 @@ import {
   Bell, BellRing, PhoneMissed, UserPlus, MapPin, TrendingUp,
   Users2, AlertTriangle, CheckCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const ICONS = {
   lead_assigned: UserPlus,
@@ -39,11 +40,19 @@ export default function NotificationBell() {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const nav = useNavigate();
+  const seenCallAlerts = useRef(new Set());
 
   const load = useCallback(async () => {
     try {
       const { data } = await api.get("/notifications");
-      setItems(asArray(data?.items ?? data));
+      const nextItems = asArray(data?.items ?? data);
+      nextItems.filter((item) => !item.read && ["incoming_call", "call_connected", "missed_call"].includes(item.type)).forEach((item) => {
+        if (!seenCallAlerts.current.has(item.id)) {
+          seenCallAlerts.current.add(item.id);
+          toast(item.title || "CallerDesk update", { description: item.message, action: item.link ? { label: "Open", onClick: () => nav(item.link) } : undefined });
+        }
+      });
+      setItems(nextItems);
       setUnread(data.unread || 0);
     } catch {
       /* silent */
@@ -52,7 +61,7 @@ export default function NotificationBell() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000);
+    const t = setInterval(load, 8000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -108,7 +117,7 @@ export default function NotificationBell() {
         <div className="max-h-[420px] overflow-y-auto divide-y divide-[#E6E4DD]">
           {items.length === 0 && (
             <div className="px-4 py-10 text-center text-sm text-forest/50">
-              You're all caught up.
+              You&apos;re all caught up.
             </div>
           )}
           {items.map((n) => {

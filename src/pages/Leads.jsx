@@ -300,6 +300,7 @@ export default function Leads() {
   const [stage, setStage] = useState(params.get("stage") || "");
   const [source, setSource] = useState(params.get("source") || "");
   const [execFilter, setExecFilter] = useState(params.get("assigned_to") || "");
+  const [ownerMode, setOwnerMode] = useState(params.get("owner_mode") || "any");
   const [projectFilter, setProjectFilter] = useState(params.get("project_id") || "");
   const [createdFilter, setCreatedFilter] = useState(params.get("created") || "");
   const [loading, setLoading] = useState(false);
@@ -311,11 +312,12 @@ export default function Leads() {
     if (stage) next.set("stage", stage);
     if (source) next.set("source", source);
     if (execFilter) next.set("assigned_to", execFilter);
+    if (execFilter && ownerMode !== "any") next.set("owner_mode", ownerMode);
     if (projectFilter) next.set("project_id", projectFilter);
     if (createdFilter) next.set("created", createdFilter);
     setParams(next, { replace: true });
     // eslint-disable-next-line
-  }, [stage, source, execFilter, projectFilter, createdFilter]);
+  }, [stage, source, execFilter, ownerMode, projectFilter, createdFilter]);
 
   const load = async () => {
     setLoading(true);
@@ -325,6 +327,7 @@ export default function Leads() {
       if (stage) params.stage = stage;
       if (source) params.source = source;
       if (execFilter) params.assigned_to = execFilter;
+      if (execFilter && ownerMode !== "any") params.owner_mode = ownerMode;
       if (q) params.search = q;
       const [leadsR, usersR, projR] = await Promise.all([
         api.get("/leads", { params }),
@@ -346,7 +349,7 @@ export default function Leads() {
   };
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [stage, source, q, execFilter, projectFilter, createdFilter]);
+  useEffect(() => { load(); }, [stage, source, q, execFilter, ownerMode, projectFilter, createdFilter]);
   const move = async (leadId, newStage) => {
     setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l)));
     try {
@@ -416,6 +419,14 @@ export default function Leads() {
           <SelectContent>
             <SelectItem value="__all__">All executives</SelectItem>
             {users.filter((u) => u.role === "executive" || u.role === "sales").map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={ownerMode} onValueChange={setOwnerMode} disabled={!execFilter}>
+          <SelectTrigger className="w-[145px] h-8 rounded-sm border-[#E6E4DD]"><SelectValue placeholder="Ownership" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Owner or co-owner</SelectItem>
+            <SelectItem value="primary">Primary owner</SelectItem>
+            <SelectItem value="co_owner">Co-owner only</SelectItem>
           </SelectContent>
         </Select>
         <Select value={projectFilter || "__all__"} onValueChange={(v) => setProjectFilter(v === "__all__" ? "" : v)}>

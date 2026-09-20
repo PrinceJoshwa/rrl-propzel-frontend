@@ -9,17 +9,32 @@ export function OrganizationProvider({ children }) {
   const { user } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [activeOrganizationId, setActiveOrganizationId] = useState(() => localStorage.getItem(STORAGE_KEY) || "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const refreshOrganizations = useCallback(async () => {
     if (!user || user === false) return;
-    const { data } = await api.get("/organizations");
-    const orgs = asArray(data);
-    setOrganizations(orgs);
-    const permitted = user.role === "super_admin" ? orgs : orgs.filter((org) => org.id === user.organization_id);
-    const current = localStorage.getItem(STORAGE_KEY);
-    const next = permitted.some((org) => org.id === current) ? current : (permitted[0]?.id || "");
-    setActiveOrganizationId(next);
-    if (next) localStorage.setItem(STORAGE_KEY, next);
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await api.get("/organizations");
+      const orgs = asArray(data);
+      setOrganizations(orgs);
+      const permitted = user.role === "super_admin" ? orgs : orgs.filter((org) => org.id === user.organization_id);
+      const current = localStorage.getItem(STORAGE_KEY);
+      const next = permitted.some((org) => org.id === current) ? current : (permitted[0]?.id || "");
+      setActiveOrganizationId(next);
+      if (next) localStorage.setItem(STORAGE_KEY, next);
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch (requestError) {
+      setOrganizations([]);
+      setActiveOrganizationId("");
+      localStorage.removeItem(STORAGE_KEY);
+      setError(requestError?.response?.data?.detail || "Unable to load organisations.");
+      throw requestError;
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { refreshOrganizations().catch(() => {}); }, [refreshOrganizations]);
@@ -31,7 +46,7 @@ export function OrganizationProvider({ children }) {
   };
 
   const activeOrganization = organizations.find((organization) => organization.id === activeOrganizationId) || null;
-  return <OrganizationCtx.Provider value={{ organizations, activeOrganization, activeOrganizationId, setActiveOrganization, refreshOrganizations }}>{children}</OrganizationCtx.Provider>;
+  return <OrganizationCtx.Provider value={{ organizations, activeOrganization, activeOrganizationId, setActiveOrganization, refreshOrganizations, loading, error }}>{children}</OrganizationCtx.Provider>;
 }
 
 export const useOrganization = () => useContext(OrganizationCtx);
