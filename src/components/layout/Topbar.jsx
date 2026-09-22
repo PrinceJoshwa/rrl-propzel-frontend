@@ -35,12 +35,21 @@ const TITLES = {
 export default function Topbar() {
   const { projects, activeId, setActive } = useProjects();
   const { user } = useAuth();
-  const { organizations, activeOrganizationId, setActiveOrganization } = useOrganization();
+  const { organizations, activeOrganizationId, setActiveOrganization, loading: organizationsLoading, error: organizationsError, refreshOrganizations } = useOrganization();
   const { pathname } = useLocation();
   const title = TITLES[pathname] || (pathname === "/super-admin" ? "Super Admin" : pathname.startsWith("/callerdesk") ? "CallerDesk" : pathname.startsWith("/leads/") ? "Lead" : "Propzel");
   // Project switcher only appears on pages where it actually filters data.
   const SHOW_ON = new Set(["/projects", "/inventory", "/site-visits", "/follow-ups"]);
   const showSwitcher = SHOW_ON.has(pathname);
+  const switchOrganization = async (organizationId) => {
+    try {
+      await api.post("/organizations/switch", { organization_id: organizationId });
+      setActiveOrganization(organizationId);
+    } catch (error) {
+      // Keep the current workspace selected when the server rejects a switch.
+      await refreshOrganizations();
+    }
+  };
 
   return (
     <header
@@ -67,9 +76,12 @@ export default function Topbar() {
 
         <div className="flex items-center gap-2">
           {user?.role === "super_admin" && (
-            <Select value={activeOrganizationId || ""} onValueChange={setActiveOrganization}>
-              <SelectTrigger className="w-[190px] h-9 rounded-sm border-[#E6E4DD] bg-white text-forest"><SelectValue placeholder="Select organisation" /></SelectTrigger>
-              <SelectContent>{organizations.filter((org) => org.active !== false).map((org) => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}</SelectContent>
+            <Select value={activeOrganizationId || ""} onValueChange={switchOrganization} disabled={organizationsLoading}>
+              <SelectTrigger className="w-[190px] h-9 rounded-sm border-[#E6E4DD] bg-white text-forest"><SelectValue placeholder={organizationsLoading ? "Loading organisations..." : "Select organisation"} /></SelectTrigger>
+              <SelectContent>
+                {organizations.filter((org) => org.active !== false).map((org) => <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>)}
+                {!organizationsLoading && organizations.length === 0 && <div className="px-2 py-2 text-xs text-clay">{organizationsError || "No organisations available."} <button onClick={(event) => { event.preventDefault(); refreshOrganizations(); }} className="underline">Retry</button></div>}
+              </SelectContent>
             </Select>
           )}
           {showSwitcher && (

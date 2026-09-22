@@ -12,7 +12,13 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const organizationId = localStorage.getItem("propzel.activeOrganizationId");
-  if (organizationId) config.headers["X-Organization-Id"] = organizationId;
+  // Bootstrap endpoints must remain reachable even when a browser holds an
+  // organisation ID that was deleted or belongs to an older environment.
+  // Otherwise `/organizations` is rejected before the UI can repair it.
+  const path = String(config.url || "").split("?")[0];
+  const unscopedEndpoints = ["/auth/me", "/auth/login", "/auth/logout", "/auth/refresh", "/organizations", "/super-admin"];
+  const isUnscoped = unscopedEndpoints.some((endpoint) => path === endpoint || path.startsWith(`${endpoint}/`));
+  if (organizationId && !isUnscoped) config.headers["X-Organization-Id"] = organizationId;
   return config;
 });
 

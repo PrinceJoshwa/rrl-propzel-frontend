@@ -5,7 +5,12 @@ import { Switch } from "@/components/ui/switch";
 import { UploadCloud, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
-const HEADERS = ["name", "phone", "email", "source", "project_name", "budget_min", "budget_max", "configuration", "location_pref", "notes"];
+const HEADERS = ["name", "phone", "email", "lead_date", "source", "project_name", "budget_min", "budget_max", "configuration", "location_pref", "notes"];
+
+function getValue(row, ...names) {
+  for (const name of names) if (row[name] != null && String(row[name]).trim()) return row[name];
+  return "";
+}
 
 function parseCsv(text) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -32,6 +37,7 @@ export default function DataImport() {
   const [autoAssign, setAutoAssign] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [progress, setProgress] = useState(null);
 
   const onFile = (e) => {
     const f = e.target.files?.[0];
@@ -47,13 +53,14 @@ export default function DataImport() {
 
   const runImport = async () => {
     if (rows.length === 0) { toast.error("Nothing to import"); return; }
-    setBusy(true);
+    setBusy(true); setResult(null); setProgress(null);
     try {
       const body = {
         rows: rows.map((r) => ({
           name: r.name,
-          phone: r.phone || null,
+          phone: getValue(r, "phone", "phone_number", "phone number", "mobile", "mobile_number") || null,
           email: r.email || null,
+          lead_date: getValue(r, "lead_date", "date", "created_date", "created at") || null,
           source: r.source || "manual",
           project_name: r.project_name || null,
           budget_min: r.budget_min ? Number(r.budget_min) : null,
@@ -64,14 +71,29 @@ export default function DataImport() {
         })).filter((r) => r.name),
         auto_assign: autoAssign,
       };
-      const { data } = await api.post("/leads/import", body);
-      setResult(data);
-      toast.success(`Imported ${data.created} leads (${data.failed} skipped)`);
-    } catch (e) { toast.error("Import failed"); }
-    finally { setBusy(false); }
+      const batches = [];
+      for (let index = 0; index < body.rows.length; index += 100) batches.push(body.rows.slice(index, index + 100));
+      const total = { created: 0, failed: 0, date_warnings: [] };
+      const requestErrors = [];
+      for (let index = 0; index < batches.length; index += 1) {
+        try {
+          const { data } = await api.post("/leads/import", { ...body, rows: batches[index] }, { timeout: 75000 });
+          total.created += data.created || 0;
+          total.failed += data.failed || 0;
+          total.date_warnings.push(...(data.date_warnings || []));
+        } catch (error) {
+          total.failed += batches[index].length;
+          requestErrors.push(`Batch ${index + 1}`);
+        }
+        setProgress({ completed: index + 1, total: batches.length });
+      }
+      setResult({ ...total, requestErrors });
+      if (requestErrors.length) toast.warning(`Imported ${total.created} leads. ${total.failed} rows need retry.`);
+      else toast.success(`Imported ${total.created} leads (${total.failed} skipped)`);
+    } finally { setBusy(false); setProgress(null); }
   };
 
-  const sampleCsv = "name,phone,email,source,project_name,budget_min,configuration\nAsha Kumar,+91 9812345678,asha@example.com,website,Aurelia Heights,15000000,3BHK\nRohit Sen,+91 9823456789,rohit@example.com,magicbricks,Meridian Bay,45000000,4BHK";
+  const sampleCsv = "name,phone,email,lead_date,source,project_name,budget_min,configuration\nAsha Kumar,+91 9812345678,asha@example.com,2026-09-21,website,Aurelia Heights,15000000,3BHK\nRohit Sen,+91 9823456789,rohit@example.com,8-Jul-22,magicbricks,Meridian Bay,45000000,4BHK";
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -109,7 +131,7 @@ export default function DataImport() {
           disabled={busy || rows.length === 0}
           className="h-10 px-5 rounded-sm bg-forest text-white text-sm font-medium hover:bg-forest-soft transition-colors duration-150 disabled:opacity-60"
         >
-          {busy ? "Importing…" : `Import ${rows.length} rows`}
+          {busy ? `Importing${progress ? ` ${progress.completed}/${progress.total}` : ""}…` : `Import ${rows.length} rows`}
         </button>
       </div>
 
@@ -117,6 +139,7 @@ export default function DataImport() {
         <div className="border border-[#2D6A4F]/30 bg-[#2D6A4F]/5 text-forest rounded-sm p-4 flex items-center gap-3">
           <CheckCircle2 className="h-4 w-4 text-[#2D6A4F]" />
           <div className="text-sm"><span className="font-bold text-[#2D6A4F]">{result.created} leads</span> imported. <span className="text-forest/60">{result.failed} skipped.</span></div>
+          {result.requestErrors?.length > 0 && <div className="text-xs text-clay">Some batches need retry: {result.requestErrors.join(", ")}.</div>}
         </div>
       )}
 

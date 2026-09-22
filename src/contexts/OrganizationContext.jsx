@@ -27,11 +27,24 @@ export function OrganizationProvider({ children }) {
       if (next) localStorage.setItem(STORAGE_KEY, next);
       else localStorage.removeItem(STORAGE_KEY);
     } catch (requestError) {
-      setOrganizations([]);
-      setActiveOrganizationId("");
+      // Clear only the local selection.  A retry gives upgraded deployments a
+      // clean bootstrap path after the previous organisation was removed.
       localStorage.removeItem(STORAGE_KEY);
-      setError(requestError?.response?.data?.detail || "Unable to load organisations.");
-      throw requestError;
+      setActiveOrganizationId("");
+      try {
+        const { data } = await api.get("/organizations");
+        const orgs = asArray(data);
+        setOrganizations(orgs);
+        const permitted = user.role === "super_admin" ? orgs : orgs.filter((org) => org.id === user.organization_id);
+        const next = permitted[0]?.id || "";
+        setActiveOrganizationId(next);
+        if (next) localStorage.setItem(STORAGE_KEY, next);
+        return;
+      } catch {
+        setOrganizations([]);
+        setError(requestError?.response?.data?.detail || "Unable to load organisations.");
+        throw requestError;
+      }
     } finally {
       setLoading(false);
     }
