@@ -57,7 +57,7 @@ export default function NotificationBell() {
     } catch {
       /* silent */
     }
-  }, []);
+  }, [nav]);
 
   useEffect(() => {
     load();

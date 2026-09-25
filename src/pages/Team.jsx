@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api, asArray, formatApiError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -69,20 +69,19 @@ export default function Team() {
   const [loadError, setLoadError] = useState("");
   const canManage = user?.role === "admin" || user?.role === "super_admin";
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setLoadError("");
     try {
-      const usersUrl = user?.role === "super_admin" ? "/users" : "/users";
-      const [usersResponse, organizationsResponse] = await Promise.all([api.get(usersUrl), api.get("/organizations")]);
+      const [usersResponse, organizationsResponse] = await Promise.all([api.get("/users"), api.get("/organizations")]);
       setUsers(asArray(usersResponse.data));
       setOrganizations(asArray(organizationsResponse.data));
     } catch (e) {
       setUsers([]);
       setLoadError(formatApiError(e.response?.data?.detail));
     } finally { setLoading(false); }
-  };
-  useEffect(() => { if (user && activeOrganizationId) load(); }, [user, activeOrganizationId]);
+  }, []);
+  useEffect(() => { if (user && activeOrganizationId) load(); }, [user, activeOrganizationId, load]);
 
   const submit = async () => {
     try {
