@@ -6,7 +6,7 @@ import { ProjectProvider } from "@/contexts/ProjectContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { Toaster } from "@/components/ui/sonner";
 
-import Login from "@/pages/Logi";
+import Login from "@/pages/Login";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Leads from "@/pages/Leads";
